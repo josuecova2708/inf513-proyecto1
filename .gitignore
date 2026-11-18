@@ -1,0 +1,8 @@
+target/
+dependency-reduced-pom.xml
+.vscode/
+.idea/
+*.iml
+logs/
+*.log
+config.properties

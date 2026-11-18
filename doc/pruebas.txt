@@ -1,0 +1,115 @@
+# Guion de pruebas de punta a punta (sin correo):
+#   java -DMODE=TEST -jar target/FederCorreo-1.0.jar -f doc/pruebas.txt
+# Requiere la BD recien cargada: Herramientas sql db/schema.sql y luego db/datos_prueba.sql
+# Formato: remitente | asunto
+
+# ── 1. Remitente NO registrado: solo HELP y REGCLI ──────────────────────────
+nuevo.cliente@example.com | LISPRO["*"]
+nuevo.cliente@example.com | HELP
+nuevo.cliente@example.com | REGCLI["9012345","Maria","Lopez","77788899","clave123","Calle Sara 10"]
+nuevo.cliente@example.com | REGCLI["9012345","Maria","Lopez","77788899","clave123"]
+
+# ── 2. Robustez del parser y validacion ─────────────────────────────────────
+cliente.ana@example.com | LISPRO["*"
+cliente.ana@example.com | LISPRO[*]
+cliente.ana@example.com | LISPROO["*"]
+cliente.ana@example.com | INSCAR["abc","2"]
+cliente.ana@example.com | INSCAR["1"]
+cliente.ana@example.com | RE: lispro [ "*" ]
+cliente.ana@example.com | VALPRC["7","validada"]
+cliente.ana@example.com | HELP["CONCAR"]
+
+# ── 3. Administrador: usuarios y permisos dinamicos ─────────────────────────
+feder.admin@example.com | LISUSU["*"]
+feder.admin@example.com | INSUSU["personal","3000003","Jorge","Suarez","feder.jorge@example.com","70000003","clave123"]
+feder.admin@example.com | INSUSU["personal","3000004","Otro","Jorge","feder.jorge@example.com","70000004","clave123"]
+feder.admin@example.com | ASIPRM["cliente","comunidades","ver","no"]
+cliente.ana@example.com | LISCOM["*"]
+feder.admin@example.com | ASIPRM["cliente","comunidades","ver","si"]
+feder.admin@example.com | LISPRM["productor"]
+feder.admin@example.com | INSCOM["Comunidad \"El Progreso\"","Warnes","Warnes","Prueba de comillas escapadas"]
+feder.admin@example.com | LISCOM["Warnes"]
+
+# ── 4. Productor: solo lo suyo ──────────────────────────────────────────────
+productor.pedro@example.com | VERPRF
+productor.pedro@example.com | LISEMP["*"]
+productor.pedro@example.com | INSPRC["1","2","disponible","50","kg","2026-11-15","2026-11-18","12","Cosecha extra"]
+productor.pedro@example.com | INSPRC["2","3","disponible","10","frasco"]
+productor.pedro@example.com | LISPRC["*"]
+productor.pedro@example.com | VALPRC["8","validada"]
+productor.pedro@example.com | MODEMP["1","telefono","71199887"]
+productor.pedro@example.com | MODEMP["1","rubro","textil"]
+
+# ── 5. Personal: valida produccion e ingresa lotes ──────────────────────────
+feder.personal@example.com | LISPRC["reportada"]
+feder.personal@example.com | VALPRC["7","validada","Calidad verificada en campo"]
+feder.personal@example.com | INSLOT["7","ARR-002","300","2027-06-30","6.80"]
+feder.personal@example.com | INSLOT["7","ARR-003","10"]
+feder.personal@example.com | INSLOT["8","MAN-002","50"]
+feder.personal@example.com | DISPRO["*"]
+
+# ── 6. Cliente: carrito y compra inmediata ──────────────────────────────────
+cliente.ana@example.com | LISPRO["*"]
+cliente.ana@example.com | INSCAR["1","10"]
+cliente.ana@example.com | INSCAR["3","2"]
+cliente.ana@example.com | INSCAR["5","2"]
+cliente.ana@example.com | INSCAR["6","50"]
+cliente.ana@example.com | MODCAR["1","12"]
+cliente.ana@example.com | LISCAR
+cliente.ana@example.com | CONCAR["envio","","7894561","Ana Rojas","Porton verde"]
+cliente.ana@example.com | LISCAR
+cliente.ana@example.com | LISPED["*"]
+cliente.ana@example.com | INSPAG["1","efectivo","50","Deposito 001"]
+cliente.carlos@example.com | VERPED["1"]
+
+# ── 7. Personal: verifica pagos y procesa el pedido ─────────────────────────
+feder.personal@example.com | LISPAG["*"]
+feder.personal@example.com | MODPAG["1","pagado"]
+feder.personal@example.com | MODPED["1","en_preparacion"]
+feder.personal@example.com | INSPAG["1","efectivo"]
+feder.personal@example.com | MODPED["1","en_preparacion"]
+feder.personal@example.com | MODPED["1","listo_entrega"]
+feder.personal@example.com | PROENT["1","2026-12-01 10:00"]
+feder.personal@example.com | MODENT["1","en_camino"]
+feder.personal@example.com | MODENT["1","entregada","Ana Rojas"]
+cliente.ana@example.com | VERPED["1"]
+cliente.ana@example.com | TRAPED["1"]
+cliente.ana@example.com | LISNOT
+
+# ── 8. Encargos ─────────────────────────────────────────────────────────────
+cliente.carlos@example.com | INSENC["5","10","2026-12-20","Para navidad"]
+cliente.carlos@example.com | ADDENC["1","7","5"]
+feder.personal@example.com | MODENC["1","aceptado"]
+feder.personal@example.com | MODENC["1","disponible"]
+feder.personal@example.com | INSPRC["3","5","disponible","50","unidad","2026-11-17"]
+feder.personal@example.com | VALPRC["9","validada"]
+feder.personal@example.com | INSLOT["9","PAP-001","50","2026-12-10","7"]
+feder.personal@example.com | INSPRC["3","7","disponible","30","unidad","2026-11-17"]
+feder.personal@example.com | VALPRC["10","validada"]
+feder.personal@example.com | INSLOT["10","LEC-001","30","2026-11-28","2.5"]
+feder.personal@example.com | MODENC["1","disponible","Ya llego la cosecha"]
+cliente.carlos@example.com | CONENC["1","recojo"]
+cliente.carlos@example.com | LISPED["*"]
+cliente.carlos@example.com | CANPED["2"]
+cliente.carlos@example.com | DISPRO["5"]
+
+# ── 9. Inventario y alertas ─────────────────────────────────────────────────
+feder.personal@example.com | INSMOV["4","salida","5","Merma por maduracion"]
+feder.personal@example.com | INSMOV["4","ajuste","-100","Conteo fisico"]
+feder.personal@example.com | INSMOV["4","ajuste","-0.5","Conteo fisico"]
+feder.personal@example.com | LISMOV["4"]
+feder.personal@example.com | TRALOT["ARR-001"]
+
+# ── 10. Indicadores y reportes ──────────────────────────────────────────────
+feder.admin@example.com | INDFIN["2026-11-01","2026-11-30"]
+feder.admin@example.com | LISSAL
+feder.admin@example.com | REPVEN["2026-11-01","2026-11-30"]
+feder.admin@example.com | REPINV
+feder.admin@example.com | REPPED["2026-11-01","2026-11-30"]
+feder.admin@example.com | REPENC["2026-11-01","2026-11-30"]
+feder.admin@example.com | REPMET["2026-11-01","2026-11-30"]
+feder.admin@example.com | REPING["2026-11-01","2026-11-30"]
+feder.admin@example.com | REPPRD["2026-11-01","2026-11-30"]
+productor.pedro@example.com | REPPRD["2026-01-01","2026-12-31"]
+cliente.ana@example.com | REPVEN["2026-11-01","2026-11-30"]
+feder.personal@example.com | REPVEN["2026-11-30","2026-11-01"]

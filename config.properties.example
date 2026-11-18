@@ -1,0 +1,19 @@
+# Configuracion de FederCorreo (Grupo 28). MODE se pasa con -DMODE=DEV|SERVER|TEST
+# En SERVER los hosts se reemplazan por localhost automaticamente.
+db.host=www.tecnoweb.org.bo
+db.port=5432
+db.name=db_grupo28sa
+db.user=grupo28sa
+db.pass=grup028grup028*
+
+mail.host=mail.tecnoweb.org.bo
+mail.pop3.port=110
+mail.smtp.port=25
+mail.user=grupo28sa
+mail.pass=grup028grup028*
+mail.address=grupo28sa@tecnoweb.org.bo
+
+# Minutos que dura la reserva de stock de un pedido confirmado sin pagar
+reserva.minutos=1440
+# Segundos entre ciclos de lectura de correo
+ciclo.segundos=10
