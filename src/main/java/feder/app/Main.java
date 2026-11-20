@@ -28,14 +28,23 @@ public class Main {
         System.out.println(ConexionDB.estaDisponible() ? "BD: OK" : "BD: NO DISPONIBLE (se reintentara en cada ciclo)");
         System.out.println("Comandos registrados: " + ProcesadorComandos.REGISTRO.todos().size());
         int espera = Config.getInt("ciclo.segundos", 10) * 1000;
+        boolean mostrarCiclos = !"false".equalsIgnoreCase(Config.get("consola.ciclos", "true"));
+        System.out.println("Revisando la bandeja cada " + espera / 1000 + " s. Ctrl+C para detener.");
+        long n = 0;
 
         while (true) {
             // Blindaje: pase lo que pase en un ciclo, se registra y el bucle CONTINUA.
+            long t0 = System.currentTimeMillis();
+            CorreoService.Ciclo c = null;
             try {
-                CorreoService.procesar();
-                Mantenimiento.ejecutar();
+                c = CorreoService.procesar();
+                if (c.bd()) Mantenimiento.ejecutar();   // sin BD no tiene sentido (ya se registro [BD])
             } catch (Throwable t) {
                 Log.error("Error no controlado en el ciclo; se continua", t);
+            }
+            n++;
+            if (mostrarCiclos || (c != null && c.bandeja() > 0)) {
+                Log.info(resumen(n, c, System.currentTimeMillis() - t0));
             }
             try {
                 Thread.sleep(espera);
@@ -44,6 +53,25 @@ public class Main {
                 break;
             }
         }
+    }
+
+    /** Ej: "[Ciclo #42] BD OK | POP3 OK | bandeja 2 -> 2 respondidos | 2310 ms" */
+    private static String resumen(long n, CorreoService.Ciclo c, long ms) {
+        StringBuilder sb = new StringBuilder("[Ciclo #").append(n).append("] ");
+        if (c == null) return sb.append("ERROR no controlado (ver logs/error.log) | ").append(ms).append(" ms").toString();
+        if (!c.bd()) return sb.append("BD FALLO | POP3 - | ciclo saltado, los correos esperan | ").append(ms).append(" ms").toString();
+        sb.append("BD OK | POP3 ").append(Boolean.TRUE.equals(c.pop3()) ? "OK" : "FALLO");
+        sb.append(" | bandeja ").append(c.bandeja());
+        if (c.bandeja() > 0) {
+            StringBuilder d = new StringBuilder();
+            if (c.respondidos()  > 0) d.append(", ").append(c.respondidos()).append(" respondidos");
+            if (c.sinRespuesta() > 0) d.append(", ").append(c.sinRespuesta()).append(" sin respuesta (SMTP)");
+            if (c.pendientes()   > 0) d.append(", ").append(c.pendientes()).append(" pendientes (BD)");
+            if (c.ignorados()    > 0) d.append(", ").append(c.ignorados()).append(" ignorados");
+            if (c.errores()      > 0) d.append(", ").append(c.errores()).append(" con error");
+            if (d.length() > 0) sb.append(" -> ").append(d.substring(2));
+        }
+        return sb.append(" | ").append(ms).append(" ms").toString();
     }
 
     private static void modoTest(String[] args) throws Exception {

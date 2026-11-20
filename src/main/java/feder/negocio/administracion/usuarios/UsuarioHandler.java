@@ -1,4 +1,4 @@
-package feder.negocio.usuarios;
+package feder.negocio.administracion.usuarios;
 
 import feder.negocio.*;
 import feder.parser.ComandoSpec.Accion;

@@ -1,8 +1,8 @@
-package feder.negocio.comercio;
+package feder.negocio.comercial.comercio;
 
 import feder.infra.Notificador;
 import feder.negocio.*;
-import feder.negocio.pedidos.PedidoServicio;
+import feder.negocio.comercial.pedidos.PedidoServicio;
 import feder.parser.ComandoSpec.Accion;
 import feder.parser.Params;
 import feder.parser.Registro;

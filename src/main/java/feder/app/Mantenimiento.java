@@ -28,7 +28,7 @@ public final class Mantenimiento {
             liberarReservasVencidas();
             revisarAlertas();
         } catch (Exception e) {
-            Log.error("Error en mantenimiento periodico", e);
+            Log.error(Log.Tipo.MANTENIMIENTO, "Error en mantenimiento periodico", e);
         }
     }
 
@@ -50,7 +50,7 @@ public final class Mantenimiento {
                         + "dentro del plazo de reserva. Los productos volvieron a estar disponibles.\n"
                         + "Puede volver a comprar con INSCAR y CONCAR.");
             } catch (Exception e) {
-                Log.error("No se pudo avisar la cancelacion a " + f.str("email"), e);
+                Log.error(Log.Tipo.SMTP, "No se pudo avisar la cancelacion a " + f.str("email"), e);
             }
         }
     }

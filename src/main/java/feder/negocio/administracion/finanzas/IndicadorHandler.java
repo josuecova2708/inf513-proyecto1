@@ -1,4 +1,4 @@
-package feder.negocio.finanzas;
+package feder.negocio.administracion.finanzas;
 
 import feder.negocio.*;
 import feder.parser.ComandoSpec.Accion;

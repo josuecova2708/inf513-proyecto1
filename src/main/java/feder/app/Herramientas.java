@@ -22,7 +22,8 @@ public class Herramientas {
 
     public static void main(String[] args) throws Exception {
         if (args.length == 0) {
-            System.out.println("Uso: diag | sql <archivo.sql> | query \"SELECT ...\" | ciclo | enviar <remitente> <asunto>");
+            System.out.println("Uso: diag | sql <archivo.sql> | query \"SELECT ...\" | ciclo | enviar <remitente> <asunto>"
+                    + " | preview <remitente> \"<ASUNTO>\"");
             return;
         }
         switch (args[0].toLowerCase()) {
@@ -32,6 +33,7 @@ public class Herramientas {
             case "manual" -> manual(args.length > 1 ? args[1] : "doc/COMANDOS.md");
             case "ciclo" -> { CorreoService.procesar(); Mantenimiento.ejecutar(); }
             case "enviar" -> enviarPrueba(args[1], args[2]);
+            case "preview" -> preview(args[1], args[2]);
             default      -> System.out.println("Opcion desconocida: " + args[0]);
         }
     }
@@ -146,6 +148,19 @@ public class Herramientas {
         m.setText("Prueba automatica", "UTF-8");
         jakarta.mail.Transport.send(m);
         System.out.println("Correo de prueba entregado a " + ConexionCorreo.CORREO);
+    }
+
+    /**
+     * Ejecuta un comando como si llegara por correo y guarda la respuesta con diseño en logs/preview.html
+     * (no envia nada). OJO: el comando se ejecuta de verdad; usar comandos de consulta (HELP, LISPRO...).
+     */
+    private static void preview(String remitente, String asunto) throws Exception {
+        ProcesadorComandos.Salida s = ProcesadorComandos.procesar(asunto, remitente);
+        String seguro = ProcesadorComandos.ocultarClaves(asunto);
+        java.nio.file.Path salida = Paths.get(feder.infra.Config.get("log.dir", "logs"), "preview.html");
+        Files.createDirectories(salida.getParent());
+        Files.writeString(salida, CorreoService.html(seguro, s.respuesta()), StandardCharsets.UTF_8);
+        System.out.println("Vista previa guardada en " + salida.toAbsolutePath());
     }
 
     private static void consulta(String sql) throws Exception {

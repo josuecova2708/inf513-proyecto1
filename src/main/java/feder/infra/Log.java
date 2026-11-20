@@ -9,10 +9,13 @@ import java.time.format.DateTimeFormatter;
 /**
  * Logs de auditoria exigidos por el enunciado:
  *   logs/access.log -> un registro por correo procesado (remitente, comando, resultado, duracion)
- *   logs/error.log  -> excepciones con su traza
+ *   logs/error.log  -> excepciones con su traza, etiquetadas por origen: [BD] [POP3] [SMTP] [COMANDO] ...
  * Tambien se imprime en consola (que run.sh redirige a feder.log).
  */
 public final class Log {
+
+    /** Origen del error: permite saber de un vistazo si fallo la BD, la lectura POP3, el envio SMTP, etc. */
+    public enum Tipo { BD, POP3, SMTP, COMANDO, MANTENIMIENTO, OTRO }
 
     private static final DateTimeFormatter F = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final Path DIR = Paths.get(Config.get("log.dir", "logs"));
@@ -27,15 +30,46 @@ public final class Log {
         System.out.println("  [ACCESS] " + linea);
     }
 
-    public static synchronized void error(String contexto, Throwable t) {
-        StringBuilder sb = new StringBuilder(ahora()).append(" | ").append(limpiar(contexto));
+    /** Error sin origen especifico (equivale a Tipo.OTRO). */
+    public static void error(String contexto, Throwable t) {
+        error(Tipo.OTRO, contexto, t);
+    }
+
+    public static synchronized void error(Tipo tipo, String contexto, Throwable t) {
+        String etiqueta = "[" + tipo + "] ";
+        StringBuilder sb = new StringBuilder(ahora()).append(" | ").append(etiqueta).append(limpiar(contexto));
         if (t != null) {
+            sb.append(" -> ").append(limpiar(causa(t)));
             StringWriter sw = new StringWriter();
             t.printStackTrace(new PrintWriter(sw));
             sb.append(System.lineSeparator()).append(sw);
         }
         escribir("error.log", sb.toString());
-        System.out.println("  [ERROR] " + contexto + (t != null ? " -> " + t : ""));
+        System.out.println(ahora() + "   [ERROR]" + etiqueta + contexto + (t != null ? " -> " + causa(t) : ""));
+    }
+
+    /** Mensaje legible de la causa raiz (credenciales, sin conexion, timeout...). */
+    public static String causa(Throwable t) {
+        if (t == null) return "";
+        Throwable raiz = t;
+        while (raiz.getCause() != null && raiz.getCause() != raiz) raiz = raiz.getCause();
+        String msg = raiz.getMessage() == null ? "" : raiz.getMessage().strip();
+        String nombre = raiz.getClass().getSimpleName();
+        String m = msg.toLowerCase();
+        // jakarta.mail reporta como AuthenticationFailedException tambien los timeouts/rechazos de conexion
+        if (m.contains("timed out"))          return "tiempo de espera agotado: el servidor no respondio (" + msg + ")";
+        if (m.contains("connection refused")) return "sin conexion: puerto cerrado o servicio caido (" + msg + ")";
+        if (m.contains("connection reset"))   return "la conexion fue cortada por el servidor (" + msg + ")";
+        String pista = switch (nombre) {
+            case "AuthenticationFailedException" -> "usuario/clave rechazados";
+            case "ConnectException"              -> "sin conexion (servidor caido o puerto cerrado)";
+            case "SocketTimeoutException"        -> "tiempo de espera agotado";
+            case "UnknownHostException"          -> "no se pudo resolver el host (DNS)";
+            case "NoRouteToHostException"        -> "sin ruta al host (red/VPN)";
+            default -> null;
+        };
+        if (pista == null) return nombre + (msg.isEmpty() ? "" : ": " + msg);
+        return pista + (msg.isEmpty() ? "" : " (" + msg + ")");
     }
 
     public static void info(String msg) {

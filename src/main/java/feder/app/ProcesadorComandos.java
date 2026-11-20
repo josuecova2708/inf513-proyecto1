@@ -5,14 +5,14 @@ import feder.infra.Log;
 import feder.infra.Notificador;
 import feder.negocio.ErrorNegocio;
 import feder.negocio.Respuesta;
-import feder.negocio.comercio.*;
-import feder.negocio.finanzas.*;
-import feder.negocio.inventario.*;
-import feder.negocio.pedidos.*;
-import feder.negocio.produccion.*;
-import feder.negocio.productores.*;
-import feder.negocio.reportes.*;
-import feder.negocio.usuarios.*;
+import feder.negocio.comercial.comercio.*;
+import feder.negocio.administracion.finanzas.*;
+import feder.negocio.operacion.inventario.*;
+import feder.negocio.comercial.pedidos.*;
+import feder.negocio.operacion.produccion.*;
+import feder.negocio.operacion.productores.*;
+import feder.negocio.administracion.reportes.*;
+import feder.negocio.administracion.usuarios.*;
 import feder.parser.*;
 import feder.parser.ComandoSpec.Accion;
 import feder.seguridad.Autorizacion;
@@ -97,7 +97,7 @@ public final class ProcesadorComandos {
             ctx = Autorizacion.contextoDe(con, remitente);
             permisos = ctx.registrado ? Autorizacion.permisosDe(con, ctx.rolId) : Map.of();
         } catch (Exception e) {
-            Log.error("No se pudo resolver el remitente " + remitente, e);
+            Log.error(Log.Tipo.BD, "No se pudo resolver el remitente " + remitente, e);
             return new Salida(Respuesta.errorBD("No se pudo verificar el remitente: " + e.getMessage()),
                     spec.nombre, "?");
         }
@@ -128,14 +128,14 @@ public final class ProcesadorComandos {
             return new Salida(Respuesta.error(e.getMessage()), spec.nombre, rol);
         } catch (SQLException e) {
             if (esErrorConexion(e)) {
-                Log.error("Fallo de conexion con la BD en " + spec.nombre, e);
+                Log.error(Log.Tipo.BD, "Fallo de conexion con la BD en " + spec.nombre, e);
                 return new Salida(Respuesta.errorBD("Fallo de conexion con la base de datos: " + e.getMessage()),
                         spec.nombre, rol);
             }
-            Log.error("Error SQL en " + spec.nombre + " (" + remitente + ")", e);
+            Log.error(Log.Tipo.COMANDO, "Error SQL en " + spec.nombre + " (" + remitente + ")", e);
             return new Salida(Respuesta.error(traducir(e)), spec.nombre, rol);
         } catch (Exception e) {
-            Log.error("Error inesperado en " + spec.nombre + " (" + remitente + ")", e);
+            Log.error(Log.Tipo.COMANDO, "Error inesperado en " + spec.nombre + " (" + remitente + ")", e);
             return new Salida(Respuesta.error("Error interno al ejecutar " + spec.nombre + ": " + e.getMessage()),
                     spec.nombre, rol);
         } finally {

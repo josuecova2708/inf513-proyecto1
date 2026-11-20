@@ -1,4 +1,4 @@
-package feder.negocio.pedidos;
+package feder.negocio.comercial.pedidos;
 
 import feder.negocio.*;
 import feder.parser.ComandoSpec.Accion;

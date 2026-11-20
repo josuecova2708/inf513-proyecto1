@@ -1,4 +1,4 @@
-package feder.negocio.usuarios;
+package feder.negocio.administracion.usuarios;
 
 import feder.app.ProcesadorComandos;
 import feder.negocio.Db;

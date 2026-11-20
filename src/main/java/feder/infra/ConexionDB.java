@@ -27,7 +27,8 @@ public final class ConexionDB {
         try (Connection con = getConnection()) {
             return con.isValid(3);
         } catch (Exception e) {
-            Log.error("BD no disponible: " + e.getMessage(), null);
+            Log.error(Log.Tipo.BD, "BD no disponible (" + Config.host("db.host", "?") + ":"
+                    + Config.get("db.port", "5432") + "): " + Log.causa(e), null);
             return false;
         }
     }

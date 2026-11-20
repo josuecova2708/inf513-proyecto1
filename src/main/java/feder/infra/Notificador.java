@@ -56,7 +56,7 @@ public final class Notificador {
                     + "WHERE r.nombre IN ('Administrador','Personal') AND u.estado = 'activo'"));
             for (Fila f : staff) enviarSeguro(f.str("email"), "FEDER - " + asunto, cuerpo(mensaje));
         } catch (Exception e) {
-            Log.error("No se pudo avisar al personal: " + asunto, e);
+            Log.error(Log.Tipo.BD, "No se pudo obtener el personal a avisar: " + asunto, e);
         }
     }
 
@@ -65,7 +65,7 @@ public final class Notificador {
             EnviadorCorreo.enviar(email, asunto, cuerpo);
             Log.info("  [NOTIFICACION] " + asunto + " -> " + email);
         } catch (Exception e) {
-            Log.error("No se pudo enviar la notificacion a " + email, e);
+            Log.error(Log.Tipo.SMTP, "No se pudo enviar la notificacion a " + email, e);
         }
     }
 

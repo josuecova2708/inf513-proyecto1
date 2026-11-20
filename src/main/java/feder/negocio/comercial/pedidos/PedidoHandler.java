@@ -1,4 +1,4 @@
-package feder.negocio.pedidos;
+package feder.negocio.comercial.pedidos;
 
 import feder.infra.Notificador;
 import feder.negocio.*;
