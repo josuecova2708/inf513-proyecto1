@@ -101,12 +101,14 @@ JOIN permiso p ON p.modulo = m.modulo;
 
 -- ---------- CU1: usuarios de prueba (clave: feder123) -----------------------
 INSERT INTO usuario (rol_id, nombre, apellido, ci, email, telefono, password_hash, direccion) VALUES
-    ((SELECT id FROM rol WHERE nombre='Administrador'), 'Admin',  'FEDER',   '1000001', 'feder.admin@example.com',    '70000001', '$2a$10$qCg2XXfCe.Uk8ISt8mKcoecKpb.3lb4reviQHIiaIch5wq37cEK/q', 'Oficina central FEDER'),
-    ((SELECT id FROM rol WHERE nombre='Personal'),      'Lucia',  'Mendez',  '1000002', 'feder.personal@example.com', '70000002', '$2a$10$qCg2XXfCe.Uk8ISt8mKcoecKpb.3lb4reviQHIiaIch5wq37cEK/q', 'Oficina central FEDER'),
-    ((SELECT id FROM rol WHERE nombre='Productor'),     'Pedro',  'Choque',  '4567890', 'productor.pedro@example.com','71122334', '$2a$10$qCg2XXfCe.Uk8ISt8mKcoecKpb.3lb4reviQHIiaIch5wq37cEK/q', 'Comunidad Los Angeles, San Julian'),
-    ((SELECT id FROM rol WHERE nombre='Productor'),     'Rosa',   'Quispe',  '5678901', 'productor.rosa@example.com', '72233445', '$2a$10$qCg2XXfCe.Uk8ISt8mKcoecKpb.3lb4reviQHIiaIch5wq37cEK/q', 'Comunidad Cuevas, Samaipata'),
-    ((SELECT id FROM rol WHERE nombre='Cliente'),       'Ana',    'Rojas',   '7894561', 'cliente.ana@example.com',    '73344556', '$2a$10$qCg2XXfCe.Uk8ISt8mKcoecKpb.3lb4reviQHIiaIch5wq37cEK/q', 'Av. Banzer 4to anillo #120'),
-    ((SELECT id FROM rol WHERE nombre='Cliente'),       'Carlos', 'Vaca',    '8905672', 'cliente.carlos@example.com', '74455667', '$2a$10$qCg2XXfCe.Uk8ISt8mKcoecKpb.3lb4reviQHIiaIch5wq37cEK/q', 'Calle Warnes #45');
+    ((SELECT id FROM rol WHERE nombre='Administrador'), 'Admin',  'FEDER',       '1000001', 'feder.admin@example.com',            '70000001', '$2a$10$qCg2XXfCe.Uk8ISt8mKcoecKpb.3lb4reviQHIiaIch5wq37cEK/q', 'Oficina central FEDER'),
+    ((SELECT id FROM rol WHERE nombre='Personal'),      'Lucia',  'Mendez',      '1000002', 'feder.personal@example.com',         '70000002', '$2a$10$qCg2XXfCe.Uk8ISt8mKcoecKpb.3lb4reviQHIiaIch5wq37cEK/q', 'Oficina central FEDER'),
+    ((SELECT id FROM rol WHERE nombre='Productor'),     'Pedro',  'Choque',      '4567890', 'productor.pedro@example.com',        '71122334', '$2a$10$qCg2XXfCe.Uk8ISt8mKcoecKpb.3lb4reviQHIiaIch5wq37cEK/q', 'Comunidad Los Angeles, San Julian'),
+    ((SELECT id FROM rol WHERE nombre='Productor'),     'Rosa',   'Quispe',      '5678901', 'productor.rosa@example.com',         '72233445', '$2a$10$qCg2XXfCe.Uk8ISt8mKcoecKpb.3lb4reviQHIiaIch5wq37cEK/q', 'Comunidad Cuevas, Samaipata'),
+    ((SELECT id FROM rol WHERE nombre='Cliente'),       'Ana',    'Rojas',       '7894561', 'cliente.ana@example.com',            '73344556', '$2a$10$qCg2XXfCe.Uk8ISt8mKcoecKpb.3lb4reviQHIiaIch5wq37cEK/q', 'Av. Banzer 4to anillo #120'),
+    ((SELECT id FROM rol WHERE nombre='Cliente'),       'Carlos', 'Vaca',        '8905672', 'cliente.carlos@example.com',         '74455667', '$2a$10$qCg2XXfCe.Uk8ISt8mKcoecKpb.3lb4reviQHIiaIch5wq37cEK/q', 'Calle Warnes #45'),
+    ((SELECT id FROM rol WHERE nombre='Administrador'), 'Josue',  'Urquidi',     '1000003', 'josueurquidicarrillo@gmail.com',     '70000003', '$2a$10$qCg2XXfCe.Uk8ISt8mKcoecKpb.3lb4reviQHIiaIch5wq37cEK/q', 'Oficina central FEDER'),
+    ((SELECT id FROM rol WHERE nombre='Administrador'), 'Julio',  'Baldiviezo',  '1000004', 'juliocesarbaldiviezomoron@gmail.com','70000004', '$2a$10$qCg2XXfCe.Uk8ISt8mKcoecKpb.3lb4reviQHIiaIch5wq37cEK/q', 'Oficina central FEDER');
 
 -- ---------- CU2: comunidades y emprendimientos ------------------------------
 INSERT INTO comunidad (nombre, municipio, provincia, descripcion) VALUES
