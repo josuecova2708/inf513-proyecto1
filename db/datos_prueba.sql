@@ -31,7 +31,8 @@ INSERT INTO permiso (nombre, modulo, accion) VALUES
     ('Entregas',                             'entregas',        'gestionar'),
     ('Notificaciones',                       'notificaciones',  'gestionar'),
     ('Indicadores financieros',              'finanzas',        'gestionar'),
-    ('Reportes',                             'reportes',        'gestionar');
+    ('Reportes',                             'reportes',        'gestionar'),
+    ('QR de cobro',                          'qr',              'gestionar');
 
 -- ---------- CU1: matriz de permisos por rol (ver, crear, editar, eliminar) ---
 -- Productor y Cliente ademas quedan limitados a SUS datos dentro de cada handler.
@@ -55,6 +56,7 @@ FROM (VALUES
     ('Administrador','notificaciones',  true, false,false,false),
     ('Administrador','finanzas',        true, false,false,false),
     ('Administrador','reportes',        true, false,false,false),
+    ('Administrador','qr',              true, true, true, true),
     -- Personal de FEDER: operacion completa; usuarios solo consulta; pagos/entregas sin eliminar
     ('Personal','usuarios',        true, false,false,false),
     ('Personal','perfil',          true, false,true, false),
@@ -72,6 +74,7 @@ FROM (VALUES
     ('Personal','notificaciones',  true, false,false,false),
     ('Personal','finanzas',        true, false,false,false),
     ('Personal','reportes',        true, false,false,false),
+    ('Personal','qr',              true, false,false,false),
     -- Productor: su emprendimiento, sus ofertas, reporta produccion, ve sus lotes y el catalogo
     ('Productor','perfil',          true, false,true, false),
     ('Productor','comunidades',     true, false,false,false),
@@ -90,7 +93,8 @@ FROM (VALUES
     ('Cliente','pedidos',         true, false,false,true),
     ('Cliente','pagos',           true, true, false,false),
     ('Cliente','entregas',        true, false,false,false),
-    ('Cliente','notificaciones',  true, false,false,false)
+    ('Cliente','notificaciones',  true, false,false,false),
+    ('Cliente','qr',              true, false,false,false)
 ) AS m(rol, modulo, ver, crear, editar, eliminar)
 JOIN rol r ON r.nombre = m.rol
 JOIN permiso p ON p.modulo = m.modulo;

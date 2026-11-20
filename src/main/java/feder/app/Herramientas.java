@@ -23,7 +23,7 @@ public class Herramientas {
     public static void main(String[] args) throws Exception {
         if (args.length == 0) {
             System.out.println("Uso: diag | sql <archivo.sql> | query \"SELECT ...\" | ciclo | enviar <remitente> <asunto>"
-                    + " | preview <remitente> \"<ASUNTO>\"");
+                    + " | preview <remitente> \"<ASUNTO>\" | subirqr <imagen.png> [email_admin]");
             return;
         }
         switch (args[0].toLowerCase()) {
@@ -34,6 +34,7 @@ public class Herramientas {
             case "ciclo" -> { CorreoService.procesar(); Mantenimiento.ejecutar(); }
             case "enviar" -> enviarPrueba(args[1], args[2]);
             case "preview" -> preview(args[1], args[2]);
+            case "subirqr" -> subirQr(args[1], args.length > 2 ? args[2] : null);
             default      -> System.out.println("Opcion desconocida: " + args[0]);
         }
     }
@@ -130,6 +131,7 @@ public class Herramientas {
         }
         sb.append("\n## Flujos típicos\n\n")
           .append("**Compra inmediata (Cliente):** `LISPRO[\"*\"]` → `INSCAR[\"1\",\"10\"]` → `LISCAR` → `CONCAR[\"recojo\"]` (reserva el stock) → `INSPAG[\"<pedido>\",\"efectivo\"]` → recibe correo *Pago confirmado* / *Pedido confirmado*.\n\n")
+          .append("**Pago por QR:** el Administrador envía `SUBQR` con la imagen del QR de FEDER adjunta (una sola vez) → el Cliente envía `INSPAG[\"<pedido>\",\"qr\"]` y recibe el QR con el monto y la glosa (número de pedido) → el Personal recibe el aviso *Pago QR por verificar*, revisa la cuenta y responde `MODPAG[\"<pago>\",\"pagado\"]` o `MODPAG[\"<pago>\",\"rechazado\"]` → el Cliente recibe *Pago confirmado*. `VERQR` muestra el QR vigente.\n\n")
           .append("**Procesar el pedido (Personal):** `MODPAG[\"<pago>\",\"pagado\"]` → `MODPED[\"<pedido>\",\"en_preparacion\"]` (descuenta los lotes) → `MODPED[\"<pedido>\",\"listo_entrega\"]` (avisa al cliente) → `MODENT[\"<pedido>\",\"entregada\",\"Receptor\"]`.\n\n")
           .append("**Producción (Productor → Personal):** `INSPRC[...]` → `VALPRC[\"<id>\",\"validada\"]` → `INSLOT[\"<id>\",\"COD-001\",\"cantidad\",\"vence\",\"costo\"]` → el stock aparece en el catálogo.\n\n")
           .append("**Encargo:** Cliente `INSENC[...]` → Personal `MODENC[\"<id>\",\"aceptado\"]` → (llega el stock) `MODENC[\"<id>\",\"disponible\"]` (avisa al cliente) → Cliente `CONENC[\"<id>\",\"recojo\"]` → pago como en una compra.\n");
@@ -159,8 +161,33 @@ public class Herramientas {
         String seguro = ProcesadorComandos.ocultarClaves(asunto);
         java.nio.file.Path salida = Paths.get(feder.infra.Config.get("log.dir", "logs"), "preview.html");
         Files.createDirectories(salida.getParent());
-        Files.writeString(salida, CorreoService.html(seguro, s.respuesta()), StandardCharsets.UTF_8);
+        Files.writeString(salida, CorreoService.html(seguro, s.respuesta(), true), StandardCharsets.UTF_8);
         System.out.println("Vista previa guardada en " + salida.toAbsolutePath());
+    }
+
+    /**
+     * Sube el QR de cobro desde un archivo, como si el Administrador enviara SUBQR con la imagen adjunta
+     * (pasa por el mismo comando y los mismos permisos). Util para preparar la demo.
+     */
+    private static void subirQr(String ruta, String emailAdmin) throws Exception {
+        java.nio.file.Path p = Paths.get(ruta);
+        String n = p.getFileName().toString().toLowerCase();
+        String mime = n.endsWith(".png") ? "image/png" : (n.endsWith(".jpg") || n.endsWith(".jpeg")) ? "image/jpeg" : null;
+        if (mime == null) { System.out.println("La imagen debe ser .png o .jpg"); return; }
+        if (emailAdmin == null) {
+            try (Connection con = ConexionDB.getConnection()) {
+                emailAdmin = feder.negocio.Db.valor(con, "SELECT u.email FROM usuario u JOIN rol r ON r.id = u.rol_id "
+                        + "WHERE r.nombre = 'Administrador' AND u.estado = 'activo' ORDER BY u.id LIMIT 1");
+            }
+        }
+        feder.infra.Adjuntos.establecer(java.util.List.of(
+                new feder.infra.Adjuntos.Archivo(p.getFileName().toString(), mime, Files.readAllBytes(p))));
+        try {
+            ProcesadorComandos.Salida s = ProcesadorComandos.procesar("SUBQR", emailAdmin);
+            System.out.println((s.respuesta().exito ? "OK: " : "ERROR: ") + s.respuesta().mensaje);
+        } finally {
+            feder.infra.Adjuntos.limpiar();
+        }
     }
 
     private static void consulta(String sql) throws Exception {

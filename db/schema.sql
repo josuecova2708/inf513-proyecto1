@@ -269,6 +269,17 @@ CREATE TABLE pago (
     comprobante     VARCHAR(255)                  -- ruta de la imagen o PDF
 );
 
+-- QR de cobro de FEDER (lo sube el Administrador con SUBQR; se envia al cliente que paga por QR)
+CREATE TABLE qr_pago (
+    id              SERIAL PRIMARY KEY,
+    imagen          BYTEA        NOT NULL,
+    tipo_mime       VARCHAR(50)  NOT NULL DEFAULT 'image/png',
+    nombre_archivo  VARCHAR(120),
+    subido_por      INT          REFERENCES usuario(id),
+    fecha           TIMESTAMP    NOT NULL DEFAULT now(),
+    activo          BOOLEAN      NOT NULL DEFAULT TRUE   -- solo uno activo; los anteriores quedan de historial
+);
+
 CREATE TABLE entrega (
     id                SERIAL PRIMARY KEY,
     pedido_id         INT          NOT NULL UNIQUE REFERENCES pedido(id) ON DELETE CASCADE,  -- 1 - 0..1

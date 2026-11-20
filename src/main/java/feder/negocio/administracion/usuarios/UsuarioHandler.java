@@ -19,7 +19,7 @@ public final class UsuarioHandler {
     static final String[] ROLES   = { "administrador", "personal", "productor", "cliente" };
     static final String[] MODULOS = { "usuarios", "perfil", "comunidades", "emprendimientos", "ofertas",
             "produccion", "lotes", "catalogo", "inventario", "carrito", "encargos", "pedidos", "pagos",
-            "entregas", "notificaciones", "finanzas", "reportes" };
+            "entregas", "notificaciones", "finanzas", "reportes", "qr" };
 
     private static final Edicion EDICION_ADMIN = new Edicion("usuario")
             .campo("nombre", texto("nombre", 80))

@@ -21,9 +21,19 @@ public final class EnviadorCorreo {
 
     /** @param html version con diseño ya armada (null = se genera con PlantillaHtml.aviso). */
     public static void enviar(String para, String asunto, String cuerpo, String html) throws MessagingException {
+        enviar(para, asunto, cuerpo, html, null);
+    }
+
+    /**
+     * @param imagen imagen opcional (p. ej. el QR). Se incrusta en el HTML (cid:imagen) y ademas queda
+     *               como archivo descargable.
+     */
+    public static void enviar(String para, String asunto, String cuerpo, String html, Adjuntos.Archivo imagen)
+            throws MessagingException {
         if ("TEST".equals(Config.MODE)) {
             System.out.println("---- [TEST] correo a " + para + " | " + asunto + " ----");
             System.out.println(cuerpo);
+            if (imagen != null) System.out.println("[imagen adjunta: " + imagen.nombre() + ", " + imagen.kb() + " KB]");
             System.out.println("--------------------------------------------------------");
             return;
         }
@@ -42,7 +52,24 @@ public final class EnviadorCorreo {
         MimeMultipart alt = new MimeMultipart("alternative");
         alt.addBodyPart(texto);
         alt.addBodyPart(parteHtml);
-        m.setContent(alt);
+
+        if (imagen == null) {
+            m.setContent(alt);
+        } else {
+            // multipart/related [ alternative(texto, html), imagen con Content-ID ]
+            MimeBodyPart contenedorAlt = new MimeBodyPart();
+            contenedorAlt.setContent(alt);
+            MimeBodyPart img = new MimeBodyPart();
+            img.setDataHandler(new jakarta.activation.DataHandler(
+                    new jakarta.mail.util.ByteArrayDataSource(imagen.datos(), imagen.mime())));
+            img.setContentID("<" + PlantillaHtml.CID_IMAGEN + ">");
+            img.setDisposition(Part.INLINE);
+            img.setFileName(imagen.nombre());
+            MimeMultipart related = new MimeMultipart("related");
+            related.addBodyPart(contenedorAlt);
+            related.addBodyPart(img);
+            m.setContent(related);
+        }
 
         try (Transport t = sesion.getTransport("smtp")) {
             t.connect(ConexionCorreo.HOST, ConexionCorreo.SMTP_PORT, null, null);

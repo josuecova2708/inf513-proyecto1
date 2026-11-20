@@ -32,8 +32,18 @@ public final class PlantillaHtml {
     private static final Pattern TITULO_EQ = Pattern.compile("^==+\\s*(.+?)\\s*==+$");
     private static final Pattern CLAVE     = Pattern.compile("^([\\p{L}¿?()/ ]{2,28}):\\s+(\\S.*)$");
 
+    /** Content-ID con el que se incrusta la imagen (QR) en el correo. */
+    public static final String CID_IMAGEN = "imagen";
+
     /** Respuesta a un comando enviado por correo. */
     public static String respuesta(String comando, boolean exito, String mensaje) {
+        return respuesta(comando, exito, mensaje, null);
+    }
+
+    /**
+     * @param srcImagen null = sin imagen; "cid:imagen" en el correo; un data: URI en la vista previa.
+     */
+    public static String respuesta(String comando, boolean exito, String mensaje, String srcImagen) {
         String insignia = exito
                 ? insignia("EXITO", "#e8f5e9", VERDE_OSC)
                 : insignia("ERROR", "#fdecea", "#b71c1c");
@@ -48,6 +58,14 @@ public final class PlantillaHtml {
                 + ";border-radius:4px;padding:3px 8px;color:" + TEXTO + ";word-break:break-all;\">" + esc(comando)
                 + "</span></td></tr></table>"
                 + "<div style=\"height:1px;background:" + BORDE + ";margin:16px 0;\"></div>";
+        if (srcImagen != null) {
+            cuerpo += "<div style=\"text-align:center;margin:18px 0 6px;\">"
+                    + "<div style=\"display:inline-block;padding:12px;border:1px solid " + BORDE + ";border-radius:10px;"
+                    + "background:#ffffff;\"><img src=\"" + esc(srcImagen) + "\" alt=\"QR de pago\" width=\"260\" "
+                    + "style=\"display:block;width:260px;max-width:100%;height:auto;\"></div>"
+                    + "<div style=\"font-size:12px;color:" + TENUE + ";margin-top:6px;\">"
+                    + "Escanee el QR desde la app de su banco. Tambien va adjunto a este correo.</div></div>";
+        }
         return documento(cabecera + cuerpo, "Respuesta automatica de " + ConexionCorreo.CORREO
                 + " &nbsp;·&nbsp; Envie <b>HELP</b> para ver sus comandos.");
     }

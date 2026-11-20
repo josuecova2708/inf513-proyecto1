@@ -1,5 +1,6 @@
 package feder.app;
 
+import feder.infra.Adjuntos;
 import feder.infra.ConexionCorreo;
 import feder.infra.ConexionDB;
 import feder.infra.EnviadorCorreo;
@@ -111,7 +112,17 @@ public final class CorreoService {
         Log.info("  Procesando: " + remitente + " | " + asuntoSeguro);
 
         long t0 = System.currentTimeMillis();
-        ProcesadorComandos.Salida s = ProcesadorComandos.procesar(asunto, remitente);
+        ProcesadorComandos.Salida s;
+        try {
+            try {
+                Adjuntos.establecer(Adjuntos.extraer(msg));   // imagenes adjuntas (p. ej. SUBQR)
+            } catch (Exception e) {
+                Log.error(Log.Tipo.POP3, "No se pudieron leer los adjuntos de " + remitente + " (se procesa sin ellos)", e);
+            }
+            s = ProcesadorComandos.procesar(asunto, remitente);
+        } finally {
+            Adjuntos.limpiar();
+        }
         long ms = System.currentTimeMillis() - t0;
         Respuesta resp = s.respuesta();
 
@@ -124,7 +135,7 @@ public final class CorreoService {
         msg.setFlag(Flags.Flag.DELETED, true);
         try {
             EnviadorCorreo.enviar(remitente, "RE: " + asuntoSeguro, cuerpo(asuntoSeguro, resp),
-                    html(asuntoSeguro, resp));
+                    html(asuntoSeguro, resp, false), resp.imagen);
         } catch (Exception e) {
             Log.error(Log.Tipo.SMTP, "No se pudo enviar la respuesta a " + remitente + " via "
                     + ConexionCorreo.HOST + ":" + ConexionCorreo.SMTP_PORT + " (el comando SI se ejecuto)", e);
@@ -145,9 +156,15 @@ public final class CorreoService {
     }
 
     /** Version con diseño de la respuesta; si algo falla se usa el texto monoespaciado de siempre. */
-    static String html(String asunto, Respuesta r) {
+    static String html(String asunto, Respuesta r, boolean vistaPrevia) {
         try {
-            return PlantillaHtml.respuesta(asunto, r.exito, r.mensaje);
+            String src = null;
+            if (r.imagen != null) {
+                src = vistaPrevia   // en el navegador no existe cid:, se incrusta como data URI
+                        ? "data:" + r.imagen.mime() + ";base64," + java.util.Base64.getEncoder().encodeToString(r.imagen.datos())
+                        : "cid:" + PlantillaHtml.CID_IMAGEN;
+            }
+            return PlantillaHtml.respuesta(asunto, r.exito, r.mensaje, src);
         } catch (Exception e) {
             Log.error(Log.Tipo.OTRO, "No se pudo armar el HTML de la respuesta; se envia en texto", e);
             return PlantillaHtml.preformateado(cuerpo(asunto, r));

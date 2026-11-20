@@ -89,6 +89,7 @@ public final class Db {
             else if (a instanceof Boolean v)       ps.setBoolean(idx, v);
             else if (a instanceof LocalDate v)     ps.setObject(idx, v);
             else if (a instanceof LocalDateTime v) ps.setObject(idx, v);
+            else if (a instanceof byte[] v)        ps.setBytes(idx, v);   // BYTEA (p. ej. imagen del QR)
             else                                   ps.setString(idx, a.toString());
         }
         return ps;

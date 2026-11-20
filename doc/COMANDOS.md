@@ -31,7 +31,7 @@ Los permisos salen de la tabla `rol_permiso` y el Administrador los puede cambia
 | `ELIUSU["id"]` | A | Dar de baja (inactivar) un usuario. | `ELIUSU["5"]` |
 | `LISROL` | A,P | Listar roles y cuantos usuarios tiene cada uno. | `LISROL` |
 | `LISPRM["administrador\|personal\|productor\|cliente\|*"]` | A,P | Ver la matriz de permisos (ver/crear/editar/eliminar) por rol. | `LISPRM["cliente"]` |
-| `ASIPRM["administrador\|personal\|productor\|cliente","usuarios\|perfil\|comunidades\|emprendimientos\|ofertas\|produccion\|lotes\|catalogo\|inventario\|carrito\|encargos\|pedidos\|pagos\|entregas\|notificaciones\|finanzas\|reportes","ver\|crear\|editar\|eliminar","si\|no"]` | A | Conceder o quitar un permiso a un rol sobre un modulo. | `ASIPRM["personal","finanzas","ver","no"]` |
+| `ASIPRM["administrador\|personal\|productor\|cliente","usuarios\|perfil\|comunidades\|emprendimientos\|ofertas\|produccion\|lotes\|catalogo\|inventario\|carrito\|encargos\|pedidos\|pagos\|entregas\|notificaciones\|finanzas\|reportes\|qr","ver\|crear\|editar\|eliminar","si\|no"]` | A | Conceder o quitar un permiso a un rol sobre un modulo. | `ASIPRM["personal","finanzas","ver","no"]` |
 
 ## CU2 - Productores y comunidades
 
@@ -109,6 +109,8 @@ Los permisos salen de la tabla `rol_permiso` y el Administrador los puede cambia
 | `INSPAG["pedido_id","qr\|efectivo\|tarjeta","monto?","referencia?"]` | A,P,C | Registrar un pago de un pedido (monto por defecto: el saldo pendiente). | `INSPAG["12","efectivo","57.00","Recibo 0012"]   o   INSPAG["12","qr"]` |
 | `MODPAG["id","pagado\|rechazado\|anulado"]` | A,P | Verificar un pago: pagado \| rechazado \| anulado. Al completar el total, el pedido se confirma y se notifica. | `MODPAG["7","pagado"]` |
 | `LISPAG["pedido_id\|*"]` | A,P,C | Listar pagos (filtro por pedido). El Cliente ve solo los suyos. | `LISPAG["*"]   o   LISPAG["12"]` |
+| `SUBQR` | A | Subir o reemplazar el QR de cobro de FEDER: envie este comando con la imagen del QR (PNG o JPG) ADJUNTA al correo. | `SUBQR   (con la imagen qr.png adjunta)` |
+| `VERQR` | A,P,C | Ver el QR de cobro de FEDER vigente. | `VERQR` |
 | `LISENT["pendiente\|en_camino\|entregada\|fallida\|*"]` | A,P,C | Listar entregas por estado. El Cliente ve solo las suyas. | `LISENT["*"]   o   LISENT["pendiente"]` |
 | `PROENT["pedido_id","fecha_programada"]` | A,P | Programar fecha y hora de entrega de un pedido. | `PROENT["12","2026-11-25 15:30"]` |
 | `MODENT["pedido_id","en_camino\|entregada\|fallida","receptor?"]` | A,P | Actualizar la entrega: en_camino \| entregada (cierra el pedido) \| fallida. | `MODENT["12","entregada","Ana Rojas"]` |
@@ -136,6 +138,8 @@ Los permisos salen de la tabla `rol_permiso` y el Administrador los puede cambia
 ## Flujos típicos
 
 **Compra inmediata (Cliente):** `LISPRO["*"]` → `INSCAR["1","10"]` → `LISCAR` → `CONCAR["recojo"]` (reserva el stock) → `INSPAG["<pedido>","efectivo"]` → recibe correo *Pago confirmado* / *Pedido confirmado*.
+
+**Pago por QR:** el Administrador envía `SUBQR` con la imagen del QR de FEDER adjunta (una sola vez) → el Cliente envía `INSPAG["<pedido>","qr"]` y recibe el QR con el monto y la glosa (número de pedido) → el Personal recibe el aviso *Pago QR por verificar*, revisa la cuenta y responde `MODPAG["<pago>","pagado"]` o `MODPAG["<pago>","rechazado"]` → el Cliente recibe *Pago confirmado*. `VERQR` muestra el QR vigente.
 
 **Procesar el pedido (Personal):** `MODPAG["<pago>","pagado"]` → `MODPED["<pedido>","en_preparacion"]` (descuenta los lotes) → `MODPED["<pedido>","listo_entrega"]` (avisa al cliente) → `MODENT["<pedido>","entregada","Receptor"]`.
 

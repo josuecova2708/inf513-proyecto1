@@ -99,6 +99,8 @@ public class Main {
         String seguro = ProcesadorComandos.ocultarClaves(asunto);
         System.out.println("\n#" + n + " ==== " + remitente + " | " + seguro);
         System.out.println(CorreoService.cuerpo(seguro, s.respuesta()));
+        if (s.respuesta().imagen != null)
+            System.out.println("[imagen adjunta: " + s.respuesta().imagen.nombre() + ", " + s.respuesta().imagen.kb() + " KB]");
         Log.acceso(remitente, seguro, s.rol(), s.respuesta().exito, "[TEST]", ms);
     }
 }
