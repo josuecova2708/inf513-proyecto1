@@ -1,212 +1,237 @@
-# Guion de demostración — FEDER por correo (Grupo 28)
+# Guion de demostración — "Una semana en FEDER" (Grupo 28)
 
-Todos los comandos se envían por correo a **grupo28sa@tecnoweb.org.bo**, con el comando en el **Asunto** (el cuerpo se ignora).
-Copie el asunto **exactamente** como aparece en la columna *Asunto*.
+Todos los comandos se envían por correo a **grupo28sa@tecnoweb.org.bo** con el comando en el **Asunto** (el cuerpo se ignora).
+Copie el asunto **exactamente** como está en la columna *Asunto*. Los valores entre `< >` se copian de la respuesta anterior.
 
-## Quién es quién
+## Personajes
 
-| Rol | Correo | Cómo se creó |
+| Rol | Persona | Correo |
 |---|---|---|
-| **A** Administrador | `josuecovarrubias8@gmail.com` | Por base de datos (id 8, clave `feder123`) |
-| **P** Personal de FEDER | `<CORREO_PERSONAL>` (un correo real de un compañero) | Paso 2, con `INSUSU` |
-| **C** Cliente | `covarrubiasjosue27@gmail.com` | Ya existe (id 7) |
-| **N** No registrado | cualquier otro correo | — |
+| **A** Administrador | Josue Covarrubias (gerente de FEDER) | `josuecovarrubias8@gmail.com` |
+| **P** Personal de FEDER | Encargado de acopio y despacho | `cacharrospremium@gmail.com` |
+| **C** Cliente | Marco Cova (compra por correo) | `covarrubiasjosue27@gmail.com` |
 
-> Reemplace `<CORREO_PERSONAL>` por un correo real **desde el que puedan enviar** (el de un compañero es lo más simple).
-> Los IDs entre `< >` (`<pedido>`, `<pago>`, `<produccion>`) se leen de la respuesta del paso anterior.
+Productores que aparecen (ya están en la BD, el Personal registra por ellos lo que entregan en acopio):
+**Huerta Jorochito** (emprendimiento 3, Comunidad Jorochito, El Torno: tomate, papaya, lechuga) y **Cafe Cuevas** (emprendimiento 4, Samaipata: café).
+
+Estado inicial del inventario (antes de empezar):
+
+| Producto | id | Precio | Stock | Nota |
+|---|---|---|---|---|
+| Arroz grano de oro | 1 | Bs 9.50 / kg | 400 kg | |
+| Mani pelado | 2 | Bs 18.00 / kg | 80 kg | |
+| Miel de abeja pura | 3 | Bs 45.00 / frasco | 60 | |
+| Tomate perita | 4 | Bs 7.00 / kg | 40 kg | lote `TOM-001` **vence el 2026-11-23** |
+| Papaya | 5 | Bs 12.00 / unidad | 0 | solo por **encargo** |
+| Cafe de Samaipata | 6 | Bs 35.00 / bolsa | 12 | **bajo el mínimo** (15) |
+
+> Si la defensa es **después del 2026-11-23**, el lote `TOM-001` ya habrá vencido: el sistema lo marca como `vencido` y lo saca
+> del stock (eso también se puede mostrar). En ese caso el tomate disponible será solo el lote nuevo `TOM-1125` del día 2.
 
 ---
 
-## 0. Antes de empezar (en la PC)
+## Preparación (en la PC, antes de la defensa)
 
 ```bat
-mvn -q -DskipTests clean package
 java -cp target\FederCorreo-1.0.jar feder.app.Herramientas diag
-java -cp target\FederCorreo-1.0.jar feder.app.Herramientas subirqr C:\ruta\qr_real.png josuecovarrubias8@gmail.com
 java -DMODE=DEV -jar target\FederCorreo-1.0.jar
 ```
 
-- `diag` debe mostrar **OK** para la BD y para POP3.
-- `subirqr` reemplaza el QR de prueba por el QR real (o hágalo por correo en el paso 2.6).
-- Deje la consola **visible** durante la defensa: se ve una línea por ciclo y cada correo procesado.
-- No tenga el sistema corriendo a la vez en el servidor (los dos leerían la misma casilla).
+`diag` debe decir **OK** para la BD y para POP3. Deje la consola visible: muestra cada ciclo y cada correo procesado.
 
 ---
 
-## 1. Robustez del parser y manejo de errores (lo que pide el enunciado)
+## Día 1 · Lunes — El gerente revisa el sistema
 
-Desde **cualquier correo**. Cada uno debe responder con un ERROR claro.
+**A** `josuecovarrubias8@gmail.com`
 
-| # | Asunto | Qué demuestra |
+| # | Asunto | Qué se ve |
 |---|---|---|
-| 1.1 | `HELP` | Un no registrado solo ve `HELP` y `REGCLI` |
-| 1.2 | `LISPRO["*"` | Sintaxis inválida: indica la **posición** del error (falta `]`) |
-| 1.3 | `LISPRO[*]` | Parámetro sin comillas dobles |
-| 1.4 | `LISPROD["*"]` | Comando inexistente con sugerencia: *¿Quiso decir LISPRO?* |
-| 1.5 | `   lispro [ "*" ]   ` | Tolera espacios y minúsculas (con un correo registrado responde el catálogo) |
-| 1.6 | `LISPRO["1";DROP TABLE usuario;--"]` | Intento de inyección SQL: rechazado por el parser |
+| 1.1 | `HELP` | Todos los comandos del Administrador, agrupados por caso de uso |
+| 1.2 | `LISUSU["*"]` | Usuarios con su rol (incluido el Personal) |
+| 1.3 | `LISPRM["personal"]` | Qué puede hacer el Personal (leído de `rol_permiso`) |
+| 1.4 | `LISALE["activa"]` | **Alertas reales**: café bajo el mínimo y tomate `TOM-001` por vencer |
+| 1.5 | `REPINV` | Inventario valorizado y lotes por vencer |
 
-Desde el **Cliente** (`covarrubiasjosue27@gmail.com`):
-
-| # | Asunto | Qué demuestra |
-|---|---|---|
-| 1.7 | `INSCAR["abc","2"]` | Validación de tipos: *debe ser un entero positivo* |
-| 1.8 | `INSCAR["1"]` | Cantidad de parámetros: *requiere 2 y llegaron 1*, con uso y ejemplo |
-| 1.9 | `INSUSU["personal","1234567","X","Y","x@y.com","","clave123",""]` | **No autorizado**: un Cliente no puede crear usuarios |
+**Mensaje para el ingeniero:** el sistema detecta solo el stock bajo y los vencimientos (tarea periódica cada minuto) y avisa por correo al Personal.
 
 ---
 
-## 2. Administrador: usuarios, roles, permisos y QR
+## Día 2 · Martes — FEDER compra cosecha a los productores (abastecimiento)
 
-Remitente: **A** `josuecovarrubias8@gmail.com`
+Huerta Jorochito llega al centro de acopio con **200 kg de tomate**; FEDER le paga **Bs 4.20/kg**.
+Cafe Cuevas avisa que en diciembre tendrá **50 bolsas** de café.
 
-| # | Asunto | Qué mostrar |
+**P** `cacharrospremium@gmail.com`
+
+| # | Asunto | Qué se ve |
 |---|---|---|
-| 2.1 | `HELP` | Lista completa de comandos del Administrador (respuesta con diseño HTML) |
-| 2.2 | `LISROL` | Roles y cantidad de usuarios |
-| 2.3 | `LISPRM["personal"]` | Matriz de permisos ver/crear/editar/eliminar leída de la BD |
-| 2.4 | `INSUSU["personal","9876543","Maria","Lopez","<CORREO_PERSONAL>","71234567","clave123","Av. Busch 100"]` | Crea el usuario **Personal** |
-| 2.5 | `INSUSU["personal","9876543","Maria","Lopez","<CORREO_PERSONAL>","71234567","clave123",""]` | Repetirlo: **ERROR de unicidad** (correo / CI ya registrados) |
-| 2.6 | `SUBQR` **con la imagen del QR adjunta** | Respuesta con el QR incrustado para confirmar (sin adjunto → error claro) |
-| 2.7 | `VERQR` | Muestra el QR vigente |
-| 2.8 | `LISUSU["*"]` | Aparece el nuevo usuario Personal |
+| 2.1 | `INSPRC["3","4","disponible","200","kg","2026-11-18","2026-11-19","4.20","Cosecha de noviembre, El Torno"]` | Producción reportada → anote `<prc_tomate>` |
+| 2.2 | `INSPRC["4","6","futura","50","bolsa","","2026-12-10","22.00","Cosecha de diciembre, Samaipata"]` | Producción **futura** de café → `<prc_cafe>` |
+| 2.3 | `LISPRC["reportada"]` | Las dos producciones esperando validación |
+| 2.4 | `VALPRC["<prc_tomate>","validada","Calidad verificada en acopio"]` | Se aprueba la calidad |
+| 2.5 | `INSLOT["<prc_tomate>","TOM-1125","200","2026-12-05","4.20"]` | **Entra al inventario** el lote `TOM-1125` (costo Bs 4.20) |
+| 2.6 | `INSLOT["<prc_tomate>","TOM-1126","10","2026-12-05","4.20"]` | ERROR: *excede lo validado* (no se puede ingresar más de lo cosechado) |
+| 2.7 | `DISPRO["*"]` | Tomate ahora 240 kg; café muestra la producción **futura** de diciembre |
+| 2.8 | `TRALOT["TOM-1125"]` | Trazabilidad: Comunidad Jorochito → Huerta Jorochito → cosecha → entrada |
 
 ---
 
-## 3. Personal: permisos limitados
+## Día 3 · Miércoles — Venta por correo con envío y pago por QR
 
-Remitente: **P** `<CORREO_PERSONAL>`
+Marco quiere tomate, miel y café, con envío a su casa.
 
-| # | Asunto | Qué mostrar |
+**C** `covarrubiasjosue27@gmail.com`
+
+| # | Asunto | Qué se ve |
 |---|---|---|
-| 3.1 | `HELP` | Menos comandos que el Administrador (los filtra su rol) |
-| 3.2 | `INSUSU["cliente","1112223","Z","Z","z@z.com","","clave123",""]` | **No autorizado**: el Personal no crea usuarios |
-| 3.3 | `LISALE["activa"]` | Alertas de inventario (stock bajo / vencimiento) |
+| 3.1 | `LISPRO["*"]` | Catálogo con precios y stock (tabla HTML) |
+| 3.2 | `VERPRO["4"]` | Ficha del tomate y qué productores lo producen |
+| 3.3 | `INSCAR["4","10"]` | 10 kg de tomate al carrito |
+| 3.4 | `INSCAR["3","2"]` | 2 frascos de miel |
+| 3.5 | `INSCAR["6","1"]` | 1 bolsa de café |
+| 3.6 | `MODCAR["4","8"]` | Cambia de idea: mejor 8 kg de tomate |
+| 3.7 | `INSCAR["6","50"]` | ERROR **sin sobreventa**: *hay 12 bolsas disponibles y su carrito tendría 51* |
+| 3.8 | `LISCAR` | Carrito: tomate 56 + miel 90 + café 35 = **Bs 181.00** |
+| 3.9 | `CONCAR["envio","Av. Banzer 5to anillo #210","13545823","Marco Cova","Porton negro"]` | **Reserva el stock** y crea el pedido (+ Bs 15 de envío = **Bs 196.00**) → `<pedido1>` |
+| 3.10 | `INSPAG["<pedido1>","qr"]` | Recibe el **QR**, el monto exacto (Bs 196.00) y la glosa (número de pedido) → `<pago1>` |
+
+Al instante el **Personal** recibe el correo **"Pago QR por verificar"** con el pago, el cliente, el monto y los comandos listos.
+
+**P** `cacharrospremium@gmail.com` (revisa la cuenta del banco: el depósito llegó)
+
+| # | Asunto | Qué se ve |
+|---|---|---|
+| 3.11 | `LISPAG["<pedido1>"]` | Pago QR de Bs 196.00 en `pendiente` |
+| 3.12 | `MODPAG["<pago1>","pagado"]` | Marco recibe **"Pago confirmado"**; el pedido pasa a **CONFIRMADO** |
 
 ---
 
-## 4. Producción → inventario → catálogo (trazabilidad)
+## Día 4 · Jueves — Preparación y despacho del pedido
 
-Remitente: **P** `<CORREO_PERSONAL>` (o **A**)
+**P** `cacharrospremium@gmail.com`
 
-| # | Asunto | Qué mostrar |
+| # | Asunto | Qué se ve |
 |---|---|---|
-| 4.1 | `INSPRC["3","4","disponible","100","kg","2026-11-18","2026-11-19","6.50","Parcela sur, Jorochito"]` | Reporta 100 kg de tomate de *Huerta Jorochito* → devuelve el id `<produccion>` |
-| 4.2 | `LISPRC["reportada"]` | La producción aparece como reportada |
-| 4.3 | `VALPRC["<produccion>","validada","Calidad verificada en campo"]` | Se valida |
-| 4.4 | `INSLOT["<produccion>","TOM-DEMO-01","100","2026-12-15","5.00"]` | Ingresa el lote al inventario (movimiento de entrada) |
-| 4.5 | `LISLOT["4"]` | Lotes de tomate, incluido `TOM-DEMO-01` |
-| 4.6 | `TRALOT["TOM-DEMO-01"]` | Trazabilidad: comunidad → emprendimiento → cosecha → movimientos |
-| 4.7 | `DISPRO["4"]` | Stock propio, reservado y producción reportada/futura |
+| 4.1 | `VERPED["<pedido1>"]` | Detalle: productos, pago y entrega |
+| 4.2 | `MODPED["<pedido1>","en_preparacion"]` | **Descuenta los lotes**. El tomate sale primero de `TOM-001` (vence antes): *primero vence, primero sale* |
+| 4.3 | `PROENT["<pedido1>","2026-11-21 10:00"]` | Programa la entrega (use una fecha **futura**) |
+| 4.4 | `MODPED["<pedido1>","listo_entrega"]` | Marco recibe **"Pedido listo para entrega"** |
+| 4.5 | `MODENT["<pedido1>","en_camino"]` | El repartidor sale (solo pedidos con envío) |
+| 4.6 | `MODENT["<pedido1>","entregada","Marco Cova"]` | Entregado: el pedido se cierra |
+| 4.7 | `TRALOT["TOM-001"]` | El lote viejo ahora muestra en qué pedido se vendió |
+
+**C** `covarrubiasjosue27@gmail.com`
+
+| # | Asunto | Qué se ve |
+|---|---|---|
+| 4.8 | `LISNOT` | Todas las notificaciones que recibió (pago, pedido listo…) |
+| 4.9 | `TRAPED["<pedido1>"]` | **De dónde vino lo que compró:** lote → productor → comunidad |
 
 ---
 
-## 5. Compra del Cliente con pago por QR
+## Día 4 · Jueves (tarde) — Venta con recojo en tienda y pago en efectivo
 
-Remitente: **C** `covarrubiasjosue27@gmail.com`
+Marco pasa por la tienda a recoger 5 kg de arroz y paga en efectivo.
 
-| # | Asunto | Qué mostrar |
-|---|---|---|
-| 5.1 | `LISPRO["*"]` | Catálogo con tabla HTML (precio, modalidad, stock) |
-| 5.2 | `VERPRO["4"]` | Ficha del tomate y quién lo produce |
-| 5.3 | `INSCAR["4","5"]` | Agrega 5 kg de tomate |
-| 5.4 | `INSCAR["1","2"]` | Agrega 2 kg de arroz |
-| 5.5 | `INSCAR["2","99999"]` | **Sin sobreventa**: *Stock insuficiente…* |
-| 5.6 | `INSCAR["5","1"]` | La papaya es solo por **encargo**: lo indica y sugiere `INSENC` |
-| 5.7 | `LISCAR` | Carrito con total |
-| 5.8 | `CONCAR["recojo"]` | Confirma la compra, **reserva el stock** y devuelve el id `<pedido>` |
-| 5.9 | `INSPAG["<pedido>","qr"]` | Recibe el **QR incrustado**, el monto exacto y la glosa (número de pedido) → devuelve el id `<pago>` |
-
-En ese momento el **Personal** recibe el correo *Pago QR por verificar* con los comandos listos para copiar.
-
----
-
-## 6. Verificación manual del pago y entrega
-
-Remitente: **P** `<CORREO_PERSONAL>`
-
-| # | Asunto | Qué mostrar |
-|---|---|---|
-| 6.1 | `LISPAG["<pedido>"]` | Pago en estado `pendiente` |
-| 6.2 | `MODPAG["<pago>","pagado"]` | El Cliente recibe *Pago confirmado* y el pedido pasa a **confirmado** |
-| 6.3 | `MODPED["<pedido>","en_preparacion"]` | Descuenta los lotes (salida de inventario) |
-| 6.4 | `PROENT["<pedido>","2026-11-21 15:30"]` | Programa la entrega (la fecha debe ser **futura**; ajústela al día de la defensa) |
-| 6.5 | `MODPED["<pedido>","listo_entrega"]` | El Cliente recibe *Pedido listo para entrega* |
-| 6.6 | `MODENT["<pedido>","entregada","Josue Covarrubias"]` | Cierra el pedido (entregado) |
-| 6.7 | `TRALOT["TOM-DEMO-01"]` | Ahora el lote muestra el pedido donde se vendió |
-
-Remitente: **C** `covarrubiasjosue27@gmail.com`
-
-| # | Asunto | Qué mostrar |
-|---|---|---|
-| 6.8 | `LISNOT` | Notificaciones recibidas (pago, pedido listo…) |
-| 6.9 | `TRAPED["<pedido>"]` | De qué lote, emprendimiento y comunidad vino cada producto |
-| 6.10 | `LISPED["*"]` | El Cliente solo ve **sus** pedidos |
-
----
-
-## 7. Cancelación y liberación de stock (opcional)
-
-Remitente: **C**
-
-| # | Asunto | Qué mostrar |
-|---|---|---|
-| 7.1 | `INSCAR["1","3"]` | Nuevo carrito |
-| 7.2 | `CONCAR["recojo"]` | Reserva el stock → `<pedido2>` |
-| 7.3 | `DISPRO["1"]` | Stock reservado aumentó |
-| 7.4 | `CANPED["<pedido2>"]` | Cancela y **libera** la reserva |
-| 7.5 | `DISPRO["1"]` | El reservado volvió a bajar |
-
----
-
-## 8. Encargo (opcional)
-
-| # | Remitente | Asunto | Qué mostrar |
+| # | Remitente | Asunto | Qué se ve |
 |---|---|---|---|
-| 8.1 | C | `INSENC["5","3","2026-12-05","Para un evento"]` | Encargo de papaya → `<encargo>` |
-| 8.2 | P | `LISENC["solicitado"]` | El Personal ve el encargo |
-| 8.3 | P | `MODENC["<encargo>","aceptado","Se coordinara con el productor"]` | Lo acepta (el cliente es notificado al pasar a disponible) |
-| 8.4 | C | `VERENC["<encargo>"]` | Estado del encargo |
+| 5.1 | C | `INSCAR["1","5"]` | 5 kg de arroz (Bs 47.50) |
+| 5.2 | C | `CONCAR["recojo"]` | Pedido con recojo, sin costo de envío → `<pedido2>` |
+| 5.3 | P | `INSPAG["<pedido2>","efectivo","47.50","Recibo 0001"]` | El Personal recibió el dinero en mano: queda **PAGADO** directo y el pedido **CONFIRMADO** |
+| 5.4 | P | `MODPED["<pedido2>","en_preparacion"]` | Descuenta el arroz del lote |
+| 5.5 | P | `MODPED["<pedido2>","listo_entrega"]` | |
+| 5.6 | P | `MODENT["<pedido2>","entregada","Marco Cova"]` | Entregado en tienda |
+
+**Diferencia que conviene explicar:** si el Cliente registra un pago queda *pendiente* hasta que el Personal lo verifique; si el Personal registra efectivo o tarjeta, queda *pagado* porque lo recibió en mano.
 
 ---
 
-## 9. Indicadores y reportes
+## Día 5 · Viernes — Un pago que no llegó (pago rechazado y cancelación)
 
-Remitente: **A** o **P**
+Marco pide maní y dice que pagó por QR, pero el Personal no encuentra el depósito.
 
-| # | Asunto | Qué mostrar |
+| # | Remitente | Asunto | Qué se ve |
+|---|---|---|---|
+| 6.1 | C | `INSCAR["2","3"]` | 3 kg de maní |
+| 6.2 | C | `CONCAR["recojo"]` | Reserva 3 kg → `<pedido3>` |
+| 6.3 | C | `INSPAG["<pedido3>","qr"]` | Recibe el QR (Bs 54.00) → `<pago3>` |
+| 6.4 | P | `DISPRO["2"]` | El maní muestra **3 kg reservados** |
+| 6.5 | P | `MODPAG["<pago3>","rechazado"]` | No llegó el depósito: pago **RECHAZADO** |
+| 6.6 | C | `LISPAG["<pedido3>"]` | Marco ve su pago rechazado |
+| 6.7 | C | `CANPED["<pedido3>"]` | Marco cancela el pedido y se **libera la reserva** |
+| 6.8 | P | `DISPRO["2"]` | El maní vuelve a tener 0 kg reservados |
+
+---
+
+## Semana siguiente — Encargo de papaya para un evento
+
+Marco necesita **30 papayas** para un matrimonio. La papaya no hay en stock: se vende por **encargo**.
+
+| # | Remitente | Asunto | Qué se ve |
+|---|---|---|---|
+| 7.1 | C | `INSCAR["5","30"]` | ERROR: la papaya es solo por encargo, sugiere `INSENC` |
+| 7.2 | C | `INSENC["5","30","2026-12-05","Para un matrimonio"]` | Encargo **solicitado** → `<encargo>` |
+| 7.3 | P | `LISENC["solicitado"]` | El Personal ve el pedido especial |
+| 7.4 | P | `MODENC["<encargo>","aceptado","Coordinamos con Huerta Jorochito"]` | Encargo **aceptado** |
+| 7.5 | P | `INSPRC["3","5","disponible","40","unidad","2026-11-25","2026-11-26","6.00","Papaya para encargo"]` | La huerta entrega 40 papayas → `<prc_papaya>` |
+| 7.6 | P | `VALPRC["<prc_papaya>","validada","Fruta en buen estado"]` | |
+| 7.7 | P | `INSLOT["<prc_papaya>","PAP-1126","40","2026-12-08","6.00"]` | Entra el lote de papaya |
+| 7.8 | P | `MODENC["<encargo>","disponible","Ya llego la papaya"]` | Verifica el stock y **avisa a Marco** por correo |
+| 7.9 | C | `CONENC["<encargo>","recojo"]` | El encargo se convierte en pedido (Bs 360.00) → `<pedido4>` |
+| 7.10 | P | `INSPAG["<pedido4>","efectivo","180.00","Anticipo 50%"]` | Anticipo: queda **saldo** de Bs 180.00 |
+| 7.11 | A | `LISSAL` | **Cuentas por cobrar**: el pedido de papaya con saldo pendiente |
+| 7.12 | P | `INSPAG["<pedido4>","efectivo","180.00","Saldo final"]` | Pago completo: el pedido pasa a **CONFIRMADO** |
+
+---
+
+## Cierre de mes — El gerente revisa los números
+
+**A** `josuecovarrubias8@gmail.com`
+
+| # | Asunto | Qué se ve |
 |---|---|---|
-| 9.1 | `INDFIN["2026-11-01","2026-11-30"]` | Ventas, ticket promedio, cobrado, por cobrar, margen bruto |
-| 9.2 | `REPVEN["2026-11-01","2026-11-30"]` | Ventas por producto |
-| 9.3 | `REPMET["2026-11-01","2026-11-30"]` | Pagos por método (aparece el QR) |
-| 9.4 | `REPINV` | Inventario valorizado y lotes por vencer |
-| 9.5 | `LISSAL` | Cuentas por cobrar |
+| 8.1 | `INDFIN["2026-11-01","2026-11-30"]` | Ventas, ticket promedio, cobrado, por cobrar, **costo y margen bruto** (precio de venta vs costo de los lotes) |
+| 8.2 | `REPVEN["2026-11-01","2026-11-30"]` | Ventas por producto: tomate, miel, café, arroz, papaya |
+| 8.3 | `REPMET["2026-11-01","2026-11-30"]` | Pagos por método: QR pagado, QR **rechazado**, efectivo |
+| 8.4 | `REPPED["2026-11-01","2026-11-30"]` | Pedidos por estado (entregado, cancelado…) y origen (inmediato / encargo) |
+| 8.5 | `REPPRD["2026-11-01","2026-12-31"]` | Producción por comunidad y productor (incluye la futura de café) |
+| 8.6 | `REPINV` | Inventario después de la semana |
+| 8.7 | `LISALE["activa"]` | Alertas: ¿el tomate quedó bajo el mínimo después de las ventas? |
 
 ---
 
-## 10. Logs y errores (para la auditoría)
+## Si el ingeniero pide ver errores
 
-En la PC, con el sistema corriendo:
+**Errores de comando** (desde cualquier correo):
 
-- **Consola:** una línea por ciclo (`[Ciclo #N] BD OK | POP3 OK | bandeja …`) y cada correo procesado (`[ACCESS] …`).
-- `logs\access.log`: un registro por correo (remitente, rol, ÉXITO/ERROR, comando, duración).
-- `logs\error.log`: excepciones con traza, etiquetadas `[BD]`, `[POP3]`, `[SMTP]`, `[COMANDO]`.
+| Asunto | Resultado |
+|---|---|
+| `LISPRO["*"` | Error de sintaxis con la **posición** exacta |
+| `LISPRO[*]` | Falta de comillas dobles |
+| `LISPROD["*"]` | Comando inexistente: *¿Quiso decir LISPRO?* |
+| `INSCAR["abc","2"]` | Tipo inválido: *debe ser un entero positivo* |
+| `INSCAR["1"]` | Faltan parámetros, con uso y ejemplo |
+| `LISPRO["1";DROP TABLE usuario;--"]` | Intento de inyección SQL rechazado |
+| `   lispro [ "*" ]   ` | Funciona: tolera espacios y minúsculas |
+| C: `INSUSU["personal","1234567","X","Y","x@y.com","","clave123",""]` | **No autorizado**: un Cliente no crea usuarios |
 
-Si piden ver un error de infraestructura, sin tocar la configuración real:
+**Errores de infraestructura** (sin tocar la configuración real):
 
 ```bat
 copy config.properties prueba.properties
-REM editar prueba.properties: db.pass=claveMala   (o mail.pass=claveMala)
+REM en prueba.properties cambie:  db.pass=claveMala   (o  mail.pass=claveMala)
 java -DMODE=DEV -Dconfig=prueba.properties -jar target\FederCorreo-1.0.jar
 ```
 
-Se verá `[ERROR][BD] ... la autentificación password falló` (o `[ERROR][POP3] ... usuario/clave rechazados`) y `[Ciclo #1] BD FALLO | ...`. Ciérrelo con `Ctrl+C` y vuelva a arrancar con la configuración normal.
+Se ve `[ERROR][BD] ...` o `[ERROR][POP3] ... usuario/clave rechazados`, y la línea `[Ciclo #1] BD FALLO | ...`.
+Todo queda en `logs\error.log`; cada correo procesado queda en `logs\access.log`.
 
 ---
 
 ## Volver a empezar
 
-Para repetir la demo con los datos iniciales (borra todo y recarga los datos de prueba; después hay que volver a crear al Administrador y subir el QR):
+Para repetir la demo desde cero (borra todo y recarga los datos de prueba; después vuelva a crear al Administrador y al Personal y a subir el QR):
 
 ```bat
 java -cp target\FederCorreo-1.0.jar feder.app.Herramientas sql db\schema.sql
