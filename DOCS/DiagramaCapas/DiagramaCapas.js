@@ -1,23 +1,23 @@
 !INC Local Scripts.EAConstants-JScript
 
 /*
- * Script Name: DiagramaCapas_Grupo14
- * Author: Grupo 14 - INF513
+ * Script Name: DiagramaCapas_Grupo28
+ * Author: Grupo 28 - INF513
  * Purpose: Generar el Diagrama de Capas del sistema
- *          "Moron Diseño y Decoraciones de Interiores" (MoronCorreo).
+ *          FEDER (FederCorreo).
  * Date: 2026-08-04
  *
  * FORMATO (igual al diagrama guia):
  *   - Cada capa es un elemento Boundary (rectangulo con el titulo arriba).
  *   - Dentro de cada capa van paquetes con el look por defecto de EA.
  *   - Las flechas son Dependencias punteadas ENTRE PAQUETES (no entre capas):
- *       Lector POP3 -> ProcesadorComandos -> los 8 casos de uso -> PostgreSQL.
+ *       CorreoService -> ProcesadorComandos -> negocio -> acceso a datos.
  *
  * CAPAS:
- *   1. Presentacion  -> Lector POP3, Emisor SMTP, TablaFormato
- *   2. Aplicacion    -> ProcesadorComandos (hub que despacha)
- *   3. Dominio       -> los 8 casos de uso, un handler cada uno (el CU va en las notas)
- *   4. Persistencia  -> PostgreSQL y PagoFacil (API REST)
+ *   1. Presentacion  -> correo entrante, respuesta SMTP y formato HTML
+ *   2. Aplicacion    -> procesamiento, analisis y autorizacion de comandos
+ *   3. Negocio       -> funcionalidades de los ocho casos de uso
+ *   4. Persistencia  -> Db, ConexionDB y PostgreSQL
  *
  * USO:
  *   1. Seleccionar en el Project Browser donde se quiere el diagrama (por ejemplo
@@ -36,8 +36,8 @@
  */
 
 // ── Configuracion ─────────────────────────────────────────────────────────────
-var LIMPIAR_ANTES   = true;                              // ver ATENCION arriba
-var NOMBRE_PAQUETE  = "Diagrama de Capas - Grupo 14";    // paquete contenedor en el arbol
+var LIMPIAR_ANTES   = false;                             // ver ATENCION arriba
+var NOMBRE_PAQUETE  = "Diagrama de Capas - Grupo 28";    // paquete contenedor en el arbol
 var NOMBRE_DIAGRAMA = "Diagrama de capas";               // marco: "pkg Diagrama de capas"
 
 // Geometria (unidades de diagrama de EA)
@@ -73,73 +73,61 @@ function main()
     var capas = new Array();
 
     capas[0] = new Array("Capa de Presentación", new Array(
-        new Array("Emisor SMTP",
-                  "moroncorreo.app.CorreoService (enviarRespuesta): arma el correo de vuelta y lo envia por SMTP."),
-        new Array("Lector de Correos POP3",
-                  "moroncorreo.app.CorreoService (procesar): baja los mensajes por POP3 y toma el Subject como comando."),
-        new Array("TablaFormato",
-                  "moroncorreo.negocio.TablaFormato: convierte el ResultSet en la tabla de texto que viaja en el cuerpo del correo.")
+        new Array("CorreoService", "feder.app.CorreoService: recibe correos, procesa el asunto y prepara la respuesta."),
+        new Array("EnviadorCorreo", "feder.infra.EnviadorCorreo: envía respuestas y avisos por SMTP."),
+        new Array("PlantillaHtml", "feder.infra.PlantillaHtml: formatea las respuestas HTML.")
     ));
 
     capas[1] = new Array("Capa de Aplicación", new Array(
-        new Array("ProcesadorComandos",
-                  "moroncorreo.app.ProcesadorComandos (lo arranca Main): parsea COMANDO[\"p1\",\"p2\"], resuelve el rol del remitente " +
-                  "con AutorizacionHandler, aplica la matriz de permisos y despacha al handler del caso de uso.")
+        new Array("ProcesadorComandos", "feder.app.ProcesadorComandos: coordina análisis, autorización y ejecución."),
+        new Array("Parser y Registro", "feder.parser: analiza el asunto, registra comandos y valida parámetros."),
+        new Array("Autorización", "feder.seguridad: identifica el remitente y comprueba permisos por rol.")
     ));
 
-    capas[2] = new Array("Capa de Dominio", new Array(
-        new Array("Usuarios",
-                  "CU1 - Usuarios. negocio.administracion.UsuarioHandler: LISUSR, INSUSR, MODUSR, ELIUSR (solo PROPIETARIO)."),
-        new Array("Productos",
-                  "CU2 - Productos. negocio.comercial.ProductoHandler: LISPROD, INSPROD, MODPROD, ELIPROD."),
-        new Array("Pedidos",
-                  "CU3 - Pedidos. negocio.comercial.PedidoHandler: INSPED, INSDET, LISPED, MODPED (el CLIENTE solo sobre lo suyo)."),
-        new Array("Inventario",
-                  "CU4 - Inventario. negocio.operacion.InventarioHandler: LISINV, INSINV, VALINV (PROPIETARIO y VENDEDOR)."),
-        new Array("Promociones",
-                  "CU5 - Promociones. negocio.comercial.PromocionHandler: LISPRO, INSPRO, MODPRO, ELIPRO."),
-        new Array("Ventas",
-                  "CU6 - Ventas. negocio.comercial.VentaHandler: LISVEN, INSVEN, GENVEN, MODVEN (PROPIETARIO y VENDEDOR)."),
-        new Array("Pagos",
-                  "CU7 - Pagos. negocio.operacion.PagoHandler: LISPAG, INSPAG, MODPAG, VERPAG; contado, cuotas y QR."),
-        new Array("Reportes",
-                  "CU8 - Reportes. negocio.administracion.ReporteHandler: REPVEN, REPINV, REPPRO, REPCUO (solo PROPIETARIO).")
+    capas[2] = new Array("Capa de Negocio", new Array(
+        new Array("CU1 Usuarios", "UsuarioHandler y AyudaHandler: cuentas, perfiles, roles y permisos."),
+        new Array("CU2 Productores", "ComunidadHandler y EmprendimientoHandler: comunidades, productores y ofertas."),
+        new Array("CU3 Producción", "ProduccionHandler y LoteHandler: producción, lotes y trazabilidad."),
+        new Array("CU4 Inventario", "CategoriaHandler, ProductoHandler e InventarioHandler: catálogo, stock y alertas."),
+        new Array("CU5 Comercio", "CarritoHandler y EncargoHandler: carrito, compras y encargos."),
+        new Array("CU6 Pedidos", "PedidoHandler, PagoHandler, EntregaHandler y NotificacionHandler: pedidos, pagos y entregas."),
+        new Array("CU7 Finanzas", "IndicadorHandler: indicadores financieros y saldos."),
+        new Array("CU8 Reportes", "ReporteHandler y reporte de producción: reportes y estadísticas.")
     ));
 
     capas[3] = new Array("Capa de Persistencia", new Array(
-        new Array("PostgreSQL",
-                  "Base de datos del sistema; se accede por JDBC a traves de moroncorreo.infra.ConexionDB."),
-        new Array("PagoFacil (API REST)",
-                  "Servicio externo de pagos QR; se consume con moroncorreo.infra.PagoFacilClient y PagoFacilConfig.")
+        new Array("Db", "feder.negocio.Db: consultas preparadas, sesiones y transacciones."),
+        new Array("ConexionDB", "feder.infra.ConexionDB: obtiene conexiones JDBC."),
+        new Array("PostgreSQL", "Base de datos FEDER db_grupo28sa; almacena la información del sistema.")
     ));
 
     // ── Dependencias entre paquetes (flechas punteadas del guia) ──────────────
     // Formato: [origen, destino]
     var deps = new Array(
-        // Presentacion <-> Aplicacion
-        new Array("Lector de Correos POP3", "ProcesadorComandos"),
-        new Array("ProcesadorComandos",     "Emisor SMTP"),
-        new Array("ProcesadorComandos",     "TablaFormato"),
-        // Aplicacion -> los 8 casos de uso
-        new Array("ProcesadorComandos",     "Usuarios"),
-        new Array("ProcesadorComandos",     "Productos"),
-        new Array("ProcesadorComandos",     "Pedidos"),
-        new Array("ProcesadorComandos",     "Inventario"),
-        new Array("ProcesadorComandos",     "Promociones"),
-        new Array("ProcesadorComandos",     "Ventas"),
-        new Array("ProcesadorComandos",     "Pagos"),
-        new Array("ProcesadorComandos",     "Reportes"),
-        // Casos de uso -> persistencia
-        new Array("Usuarios",               "PostgreSQL"),
-        new Array("Productos",              "PostgreSQL"),
-        new Array("Pedidos",                "PostgreSQL"),
-        new Array("Inventario",             "PostgreSQL"),
-        new Array("Promociones",            "PostgreSQL"),
-        new Array("Ventas",                 "PostgreSQL"),
-        new Array("Pagos",                  "PostgreSQL"),
-        new Array("Reportes",               "PostgreSQL"),
-        // Integracion externa
-        new Array("Pagos",                  "PagoFacil (API REST)")
+        new Array("CorreoService", "ProcesadorComandos"),
+        new Array("CorreoService", "EnviadorCorreo"),
+        new Array("CorreoService", "PlantillaHtml"),
+        new Array("ProcesadorComandos", "Parser y Registro"),
+        new Array("ProcesadorComandos", "Autorización"),
+        new Array("ProcesadorComandos", "CU1 Usuarios"),
+        new Array("ProcesadorComandos", "CU2 Productores"),
+        new Array("ProcesadorComandos", "CU3 Producción"),
+        new Array("ProcesadorComandos", "CU4 Inventario"),
+        new Array("ProcesadorComandos", "CU5 Comercio"),
+        new Array("ProcesadorComandos", "CU6 Pedidos"),
+        new Array("ProcesadorComandos", "CU7 Finanzas"),
+        new Array("ProcesadorComandos", "CU8 Reportes"),
+        new Array("Autorización", "Db"),
+        new Array("CU1 Usuarios", "Db"),
+        new Array("CU2 Productores", "Db"),
+        new Array("CU3 Producción", "Db"),
+        new Array("CU4 Inventario", "Db"),
+        new Array("CU5 Comercio", "Db"),
+        new Array("CU6 Pedidos", "Db"),
+        new Array("CU7 Finanzas", "Db"),
+        new Array("CU8 Reportes", "Db"),
+        new Array("Db", "ConexionDB"),
+        new Array("ConexionDB", "PostgreSQL")
     );
 
     // ── Limpieza previa (permite re-ejecutar sin duplicados) ──────────────────
@@ -150,13 +138,13 @@ function main()
     // ── Paquete contenedor: todo el diagrama vive adentro ─────────────────────
     var cont as EA.Package;
     cont = crearPaquete(destino, NOMBRE_PAQUETE,
-                        "Contenedor del diagrama de capas de MoronCorreo (generado por script).");
+                        "Contenedor del diagrama de capas de FederCorreo (generado por script).");
 
     // ── Crear el diagrama dentro del contenedor ───────────────────────────────
     var diag as EA.Diagram;
-    diag = cont.Diagrams.AddNew(NOMBRE_DIAGRAMA, "Package");
-    diag.Notes = "Diagrama de capas de MoronCorreo. Las dependencias van siempre hacia abajo: " +
-                 "ninguna capa inferior conoce a las superiores.";
+    diag = cont.Diagrams.AddNew(NOMBRE_DIAGRAMA, "Logical");
+    diag.Notes = "Vista conceptual de FEDER: agrupa clases por responsabilidad. " +
+                 "Las flechas muestran dependencias principales, no una arquitectura estrictamente por capas.";
     diag.Update();
     cont.Diagrams.Refresh();
     apagarNamespace(diag);   // que no aparezca el "(from ...)" debajo de las cajas
@@ -295,14 +283,14 @@ function apagarNamespace(diag)
 
 /**
  * Ubica el elemento (por ElementID) en el diagrama.
- * En EA el eje Y crece hacia abajo en negativo: t y b van negados.
+ * AddNew recibe las coordenadas verticales como números positivos.
  * alFondo = true manda el objeto al fondo (las capas, para que no tapen las cajas).
  */
 function ubicar(diag, elementID, x, y, w, h, alFondo)
 {
     var obj as EA.DiagramObject;
     obj = diag.DiagramObjects.AddNew(
-        "l=" + x + ";r=" + (x + w) + ";t=" + (-y) + ";b=" + (-(y + h)) + ";", ""
+        "l=" + x + ";r=" + (x + w) + ";t=" + y + ";b=" + (y + h) + ";", ""
     );
     obj.ElementID = elementID;
 
