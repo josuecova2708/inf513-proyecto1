@@ -6,10 +6,12 @@ Sistema backend con **arquitectura dirigida por correo (Email-Driven)** para FED
 Asunto:  INSCAR["1","10"]        →   Respuesta:  "Agregado: 10 kg de Arroz grano de oro ... TOTAL: Bs 95.00"
 ```
 
-- **76 comandos** que cubren los casos de uso CU1–CU8 (RF01–RF17). El detalle está en [doc/COMANDOS.md](doc/COMANDOS.md).
+- **76 comandos** que cubren los casos de uso CU1–CU8 (RF01–RF17). El detalle está en [doc/COMANDOS.md](doc/COMANDOS.md); hay un guion de demostración en [doc/FLUJO_DEMO.md](doc/FLUJO_DEMO.md).
 - **Roles reales** (Administrador, Personal de FEDER, Productor, Cliente): los permisos se leen de la BD (`rol_permiso`) y cada handler verifica además que el usuario sea dueño de los datos.
 - Reserva de stock por lotes (primero vence, primero sale), **sin sobreventa** ante compras simultáneas (`SELECT ... FOR UPDATE`).
-- Notificaciones por correo al cliente, alertas de inventario al personal y logs de auditoría `access.log` / `error.log`.
+- **Respuestas en HTML con diseño** (tablas reales, insignia ÉXITO/ERROR) más una versión en texto plano para clientes que no muestran HTML.
+- **Pago por QR sin pasarela:** el Administrador sube el QR de cobro (`SUBQR` con la imagen adjunta), el cliente lo recibe al pagar y el Personal verifica el depósito a mano (`MODPAG`).
+- Notificaciones por correo al cliente, alertas de inventario al personal y logs de auditoría `access.log` / `error.log` con el **origen de cada error** (`[BD]`, `[POP3]`, `[SMTP]`, `[COMANDO]`…).
 
 ---
 
@@ -20,7 +22,8 @@ Asunto:  INSCAR["1","10"]        →   Respuesta:  "Agregado: 10 kg de Arroz gra
       │  correo con el comando en el Asunto
       ▼
 [Servidor de correo tecnoweb.org.bo]  (casilla grupo28sa, POP3 :110)
-      │  FederCorreo lee la casilla cada 10 s (proceso vigilado por cron)
+      │  FederCorreo lee la casilla cada 5 s (proceso vigilado por cron)
+      │  y extrae el Asunto (MIME UTF-8) y las imágenes adjuntas (p. ej. el QR de SUBQR)
       ▼
 [ParserAsunto] ──(sintaxis inválida)──────────────► correo de ERROR con la posición del fallo
       │
@@ -34,6 +37,17 @@ Asunto:  INSCAR["1","10"]        →   Respuesta:  "Agregado: 10 kg de Arroz gra
       ├── error de negocio / SQL ─────────────────► ERROR detallado
       ├── BD caída ───────────────────────────────► el correo NO se borra: se reintenta
       └── éxito ──────────────────────────────────► correo de ÉXITO con los datos (+ notificaciones)
+      │
+[EnviadorCorreo] SMTP :25, multipart (texto + HTML, imagen incrustada si hay QR)
+      └── falla el SMTP ──► el comando YA se ejecutó: el correo se borra igual (no se repite) y se registra [SMTP]
+```
+
+Cada iteración del ciclo se muestra en consola, por ejemplo:
+
+```
+2026-11-19 20:37:55 [Ciclo #2] BD OK | POP3 OK | bandeja 0 | 7533 ms
+2026-11-19 20:38:09 [Ciclo #3] BD OK | POP3 OK | bandeja 1 -> 1 respondidos | 8517 ms
+2026-11-19 20:36:00   [ERROR][POP3] No se pudo leer la bandeja mail.tecnoweb.org.bo:110 -> usuario/clave rechazados
 ```
 
 ### Paquetes (`src/main/java/feder`)
@@ -41,10 +55,15 @@ Asunto:  INSCAR["1","10"]        →   Respuesta:  "Agregado: 10 kg de Arroz gra
 | Paquete | Responsabilidad |
 |---|---|
 | `app` | `Main` (ciclo y modo TEST), `CorreoService` (POP3/SMTP), `ProcesadorComandos` (orquesta el flujo), `Mantenimiento` (tareas periódicas), `Herramientas` (diagnóstico, carga de SQL, manual) |
-| `infra` | `Config` (config.properties), `ConexionDB`, `ConexionCorreo`, `EnviadorCorreo` (texto + HTML monoespaciado), `Notificador`, `Log` |
+| `infra` | `Config` (config.properties), `ConexionDB`, `ConexionCorreo`, `EnviadorCorreo` (SMTP: texto + HTML, imagen incrustada), `PlantillaHtml` (diseño de los correos), `Adjuntos` (imágenes recibidas), `Notificador`, `Log` (access/error con origen del error) |
 | `parser` | `ParserAsunto` (analizador léxico), `ParamSpec`/`Params` (tipos y validación), `ComandoSpec`/`Registro` (catálogo de comandos) |
 | `seguridad` | `Contexto` (quién escribe), `Autorizacion` (rol + permisos desde la BD) |
-| `negocio.*` | Un handler por área: `usuarios` (CU1), `productores` (CU2), `produccion` (CU3), `inventario` (CU4), `comercio` (CU5), `pedidos` (CU6), `finanzas` (CU7), `reportes` (CU8) |
+| `negocio` | Clases comunes: `Respuesta`, `TablaFormato`, `Db` (consultas preparadas y transacciones), `Fila`, `ErrorNegocio`, `Edicion` |
+| `negocio.administracion` | CU1 usuarios, roles y permisos (`usuarios`) · CU7 indicadores financieros (`finanzas`) · CU8 reportes (`reportes`) |
+| `negocio.operacion` | CU2 productores y comunidades (`productores`) · CU3 producción, lotes y trazabilidad (`produccion`) · CU4 catálogo, inventario y alertas (`inventario`) |
+| `negocio.comercial` | CU5 carrito, compras y encargos (`comercio`) · CU6 pedidos, pagos y QR, entregas y notificaciones (`pedidos`) |
+
+Dependencias entre los paquetes de negocio (sin ciclos): `comercial → operacion` (los pedidos reservan y descuentan stock de los lotes) y `administracion → comercial / operacion` (reportes e indicadores leen ventas y producción).
 
 Cada comando se declara **una sola vez** (nombre, módulo, acción, tipos de parámetros, descripción, ejemplo, handler). De esa declaración salen la validación, la autorización, el `HELP` según el rol y el manual `doc/COMANDOS.md`.
 
@@ -52,34 +71,42 @@ Cada comando se declara **una sola vez** (nombre, módulo, acción, tipos de par
 
 ```mermaid
 flowchart TD
-    A[Ciclo cada 10 s] --> B{¿BD disponible?}
-    B -- no --> A
+    A[Ciclo cada 5 s] --> B{¿BD disponible?}
+    B -- no: registrar BD --> A
     B -- sí --> C[POP3: leer INBOX, ordenar del más antiguo al más nuevo]
     C --> D{¿Quedan mensajes?}
     D -- no --> M[Mantenimiento: reservas vencidas, lotes vencidos, alertas] --> A
     D -- sí --> E{¿Remitente automático o propio?}
     E -- sí --> X[Borrar sin responder] --> D
-    E -- no --> F[Decodificar asunto MIME UTF-8, quitar RE:/FW:]
+    E -- no --> F[Decodificar asunto MIME UTF-8, quitar RE:/FW:, leer imágenes adjuntas]
     F --> G{¿Sintaxis COMANDO&#91;'p1',...&#93; válida?}
-    G -- no --> R1[Responder ERROR de sintaxis con posición] --> Z
+    G -- no --> R1[Responder ERROR de sintaxis con posición]
     G -- sí --> H{¿Comando existe?}
-    H -- no --> R2[Responder ERROR + sugerencia] --> Z
+    H -- no --> R2[Responder ERROR + sugerencia]
     H -- sí --> I[Buscar remitente en usuario → rol]
     I --> J{¿El rol tiene permiso? rol_permiso}
-    J -- no --> R3[Responder No autorizado / solo HELP y REGCLI] --> Z
+    J -- no --> R3[Responder No autorizado / solo HELP y REGCLI]
     J -- sí --> K{¿Cantidad y tipos de parámetros válidos?}
-    K -- no --> R4[Responder ERROR + uso + ejemplo] --> Z
+    K -- no --> R4[Responder ERROR + uso + ejemplo]
     K -- sí --> L[Ejecutar handler en transacción]
     L --> N{Resultado}
     N -- BD caída --> Q[Conservar correo para reintentar] --> D
-    N -- error --> R5[Responder ERROR detallado] --> Z
-    N -- éxito --> R6[Responder ÉXITO + enviar notificaciones] --> Z
+    N -- error --> R5[Responder ERROR detallado] --> S
+    N -- éxito --> R6[Responder ÉXITO + enviar notificaciones] --> S
+    R1 --> S
+    R2 --> S
+    R3 --> S
+    R4 --> S
+    S{¿SMTP envió la respuesta?}
+    S -- sí --> Z
+    S -- no --> W[Registrar SMTP en error.log] --> Z
     Z[Borrar correo, registrar en access.log] --> D
 ```
 
 ## 3. Base de datos
 
-PostgreSQL `db_grupo28sa`. El script es [db/schema.sql](db/schema.sql), el modelo FEDER v4: 22 tablas, 3 vistas y 7 funciones plpgsql.
+PostgreSQL `db_grupo28sa`. El script es [db/schema.sql](db/schema.sql), el modelo FEDER v4: 23 tablas, 3 vistas y 7 funciones plpgsql.
+Para una BD ya creada antes del pago por QR, basta aplicar [db/migracion_qr.sql](db/migracion_qr.sql) (se puede ejecutar varias veces).
 
 | Área | Tablas |
 |---|---|
@@ -87,7 +114,7 @@ PostgreSQL `db_grupo28sa`. El script es [db/schema.sql](db/schema.sql), el model
 | CU2 Productores | `comunidad`, `emprendimiento`, `emprendimiento_producto` (ofertas) |
 | CU3/CU4 Producción e inventario | `categoria`, `producto`, `produccion`, `lote`, `movimiento_inventario`, `alerta_inventario` |
 | CU5 Encargos | `encargo`, `detalle_encargo` |
-| CU6 Pedidos | `pedido`, `detalle_pedido`, `reserva_lote`, `metodo_pago`, `pago`, `entrega`, `notificacion` |
+| CU6 Pedidos | `pedido`, `detalle_pedido`, `reserva_lote`, `metodo_pago`, `pago`, `qr_pago` (QR de cobro subido por el Administrador, con historial), `entrega`, `notificacion` |
 
 - **Vistas:** `v_disponibilidad_producto` (stock propio / reservado / producción reportada / futura), `v_saldo_pedido` (cobrado y saldo), `v_trazabilidad` (producto vendido → lote → emprendimiento → comunidad).
 - **Funciones:** `fn_ingresar_lote`, `fn_reservar_pedido` / `fn_reservar_detalle` (reserva por lotes, primero vence primero sale, con `FOR UPDATE`), `fn_confirmar_reservas` (salida de inventario), `fn_liberar_reservas`, `fn_liberar_reservas_vencidas`, `fn_revisar_stock_minimo`.
@@ -135,7 +162,17 @@ Usuarios de prueba (todos con clave `feder123`):
 | cualquier otro correo | No registrado (solo `HELP` y `REGCLI`) |
 
 Para dejar la BD como al principio: `herramientas.bat sql db\schema.sql` y luego `herramientas.bat sql db\datos_prueba.sql`.
-Otras utilidades: `herramientas.bat diag` (prueba la BD y POP3), `query "SELECT ..."` y `manual` (regenera doc/COMANDOS.md).
+
+Otras utilidades (`herramientas.bat <opción>`):
+
+| Opción | Qué hace |
+|---|---|
+| `diag` | Prueba el login a la BD y a POP3 |
+| `query "SELECT ..."` | Ejecuta una consulta y muestra la tabla |
+| `sql archivo.sql` | Ejecuta un script completo en una transacción |
+| `manual` | Regenera doc/COMANDOS.md desde el registro de comandos |
+| `preview correo "ASUNTO"` | Guarda en `logs/preview.html` cómo se vería la respuesta (ejecuta el comando de verdad) |
+| `subirqr imagen.png [correo_admin]` | Carga el QR de cobro desde un archivo, igual que `SUBQR` |
 
 ### 5.2 Probar con correo real desde una PC (modo DEV)
 
@@ -143,7 +180,7 @@ Otras utilidades: `herramientas.bat diag` (prueba la BD y POP3), `query "SELECT 
 run_dev.bat          # o ./run_dev.sh
 ```
 
-Lee la casilla por POP3 y responde por SMTP. El servidor SMTP de tecnoweb **solo acepta enviar desde IPs habilitadas por el docente**. Si la respuesta falla con `Relaying denied`, hay que pedir que habiliten la IP pública de esa PC. Para probar con su propio correo, cambien el email de un usuario de prueba (`MODUSU["id","email","su@correo.com"]` desde el admin en modo TEST) o regístrense con `REGCLI`.
+Equivale a `java -DMODE=DEV -jar target\FederCorreo-1.0.jar`. Lee la casilla por POP3 y responde por SMTP, y muestra una línea por ciclo (`consola.ciclos=false` en config.properties para mostrar solo cuando llegan correos). **No lo corran a la vez que el servidor:** los dos leerían la misma casilla y se repartirían los correos. El servidor SMTP de tecnoweb **solo acepta enviar desde IPs habilitadas por el docente**. Si la respuesta falla con `Relaying denied`, hay que pedir que habiliten la IP pública de esa PC. Para probar con su propio correo, cambien el email de un usuario de prueba (`MODUSU["id","email","su@correo.com"]` desde el admin en modo TEST) o regístrense con `REGCLI`.
 
 ### 5.3 Producción en el servidor (modo SERVER)
 
@@ -160,10 +197,25 @@ En SERVER todo va por `localhost` (BD y correo), así que no depende de ninguna 
 
 | Archivo | Contenido |
 |---|---|
-| `logs/access.log` | `fecha \| remitente \| rol \| EXITO/ERROR \| comando \| duración \| resumen`, un registro por correo |
-| `logs/error.log` | Excepciones con traza completa (errores SQL, de conexión, de envío) |
-| `feder.log` (servidor) | Salida de consola del proceso |
+| `logs/access.log` | `fecha \| remitente \| rol \| EXITO/ERROR \| comando \| duración \| resumen`, un registro por correo. Si la respuesta no se pudo enviar, el resumen termina en `[respuesta NO enviada: SMTP]` |
+| `logs/error.log` | Excepciones con traza completa, etiquetadas por origen |
+| `feder.log` (servidor) | Salida de consola del proceso (incluye la línea de cada ciclo) |
 
-## 7. Pendiente
+Etiquetas de error, para saber de un vistazo qué falló:
 
-- Cobro por **QR con PagoFácil**: por ahora `INSPAG[..,"qr"]` registra el pago como pendiente y el Personal lo verifica con `MODPAG`.
+| Etiqueta | Origen | Ejemplo de causa |
+|---|---|---|
+| `[BD]` | PostgreSQL | clave incorrecta, servidor caído, conexión cortada |
+| `[POP3]` | Lectura de la casilla | usuario/clave rechazados, tiempo de espera agotado |
+| `[SMTP]` | Envío de respuestas y avisos | puerto cerrado, IP no habilitada para enviar |
+| `[COMANDO]` | Error SQL o interno al ejecutar un comando | restricción violada, error inesperado |
+| `[MANTENIMIENTO]` | Tareas periódicas | liberación de reservas, alertas de stock |
+
+## 7. Pago por QR (sin pasarela)
+
+No hay credenciales de PagoFácil este semestre, así que el cobro por QR es **manual**:
+
+1. El Administrador envía `SUBQR` con la imagen del QR de la cuenta de FEDER **adjunta** (PNG/JPG, máx. 2 MB). Queda guardado en `qr_pago`; si sube otro, reemplaza al anterior.
+2. El Cliente envía `INSPAG["<pedido>","qr"]` y recibe el QR incrustado en el correo (y adjunto), con el **monto exacto** y el **número de pedido** que debe poner en la glosa. El pago queda `pendiente`.
+3. El Personal recibe el aviso *Pago QR por verificar*, revisa la cuenta y responde `MODPAG["<pago>","pagado"]` o `MODPAG["<pago>","rechazado"]`.
+4. Al marcarlo pagado se notifica al cliente y, si se completó el total, el pedido pasa a `confirmado`. `VERQR` muestra el QR vigente.
