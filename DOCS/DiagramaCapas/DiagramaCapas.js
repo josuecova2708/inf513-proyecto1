@@ -85,14 +85,14 @@ function main()
     ));
 
     capas[2] = new Array("Capa de Negocio", new Array(
-        new Array("CU1 Usuarios", "UsuarioHandler y AyudaHandler: cuentas, perfiles, roles y permisos."),
-        new Array("CU2 Productores", "ComunidadHandler y EmprendimientoHandler: comunidades, productores y ofertas."),
-        new Array("CU3 Producción", "ProduccionHandler y LoteHandler: producción, lotes y trazabilidad."),
-        new Array("CU4 Inventario", "CategoriaHandler, ProductoHandler e InventarioHandler: catálogo, stock y alertas."),
-        new Array("CU5 Comercio", "CarritoHandler y EncargoHandler: carrito, compras y encargos."),
-        new Array("CU6 Pedidos", "PedidoHandler, PagoHandler, EntregaHandler y NotificacionHandler: pedidos, pagos y entregas."),
-        new Array("CU7 Finanzas", "IndicadorHandler: indicadores financieros y saldos."),
-        new Array("CU8 Reportes", "ReporteHandler y reporte de producción: reportes y estadísticas.")
+        new Array("Usuarios", "UsuarioHandler y AyudaHandler: cuentas, perfiles, roles y permisos."),
+        new Array("Productores", "ComunidadHandler y EmprendimientoHandler: comunidades, productores y ofertas."),
+        new Array("Producción", "ProduccionHandler y LoteHandler: producción, lotes y trazabilidad."),
+        new Array("Inventario", "CategoriaHandler, ProductoHandler e InventarioHandler: catálogo, stock y alertas."),
+        new Array("Comercio", "CarritoHandler y EncargoHandler: carrito, compras y encargos."),
+        new Array("Pedidos", "PedidoHandler, PagoHandler, EntregaHandler y NotificacionHandler: pedidos, pagos y entregas."),
+        new Array("Finanzas", "IndicadorHandler: indicadores financieros y saldos."),
+        new Array("Reportes", "ReporteHandler y reporte de producción: reportes y estadísticas.")
     ));
 
     capas[3] = new Array("Capa de Persistencia", new Array(
@@ -109,23 +109,23 @@ function main()
         new Array("CorreoService", "PlantillaHtml"),
         new Array("ProcesadorComandos", "Parser y Registro"),
         new Array("ProcesadorComandos", "Autorización"),
-        new Array("ProcesadorComandos", "CU1 Usuarios"),
-        new Array("ProcesadorComandos", "CU2 Productores"),
-        new Array("ProcesadorComandos", "CU3 Producción"),
-        new Array("ProcesadorComandos", "CU4 Inventario"),
-        new Array("ProcesadorComandos", "CU5 Comercio"),
-        new Array("ProcesadorComandos", "CU6 Pedidos"),
-        new Array("ProcesadorComandos", "CU7 Finanzas"),
-        new Array("ProcesadorComandos", "CU8 Reportes"),
+        new Array("ProcesadorComandos", "Usuarios"),
+        new Array("ProcesadorComandos", "Productores"),
+        new Array("ProcesadorComandos", "Producción"),
+        new Array("ProcesadorComandos", "Inventario"),
+        new Array("ProcesadorComandos", "Comercio"),
+        new Array("ProcesadorComandos", "Pedidos"),
+        new Array("ProcesadorComandos", "Finanzas"),
+        new Array("ProcesadorComandos", "Reportes"),
         new Array("Autorización", "Db"),
-        new Array("CU1 Usuarios", "Db"),
-        new Array("CU2 Productores", "Db"),
-        new Array("CU3 Producción", "Db"),
-        new Array("CU4 Inventario", "Db"),
-        new Array("CU5 Comercio", "Db"),
-        new Array("CU6 Pedidos", "Db"),
-        new Array("CU7 Finanzas", "Db"),
-        new Array("CU8 Reportes", "Db"),
+        new Array("Usuarios", "Db"),
+        new Array("Productores", "Db"),
+        new Array("Producción", "Db"),
+        new Array("Inventario", "Db"),
+        new Array("Comercio", "Db"),
+        new Array("Pedidos", "Db"),
+        new Array("Finanzas", "Db"),
+        new Array("Reportes", "Db"),
         new Array("Db", "ConexionDB"),
         new Array("ConexionDB", "PostgreSQL")
     );
